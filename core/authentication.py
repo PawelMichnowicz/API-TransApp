@@ -1,21 +1,28 @@
-import jwt, datetime, json
-from rest_framework import exceptions
-from base64 import b64decode, b64encode
+import jwt, datetime
+from dotenv import dotenv_values
 
-def create_access_token(id):
+env_var = dotenv_values()
+ACCESS_SECRET = env_var['ACCESS_SECRET'] 
+REFRESH_SECRET = env_var['REFRESH_SECRET'] 
+ALG = env_var['ALG'] 
+
+
+def create_access_token(user):
     return jwt.encode({
-        'user_id': id,
+        'user_id': user['id'],
+        'email' : user['email'],
+        'username' : user['username'],
         'exp': datetime.datetime.utcnow() + datetime.timedelta(seconds=120),
         'iat': datetime.datetime.utcnow()
         },
-        'access_secret', 
-        algorithm='HS256')
+        ACCESS_SECRET, 
+        algorithm=ALG)
 
 def decode_access_token(access_token):
     return jwt.decode(
     access_token,
-    'access_secret',
-    algorithms=['HS256'])
+    ACCESS_SECRET,
+    algorithms=[ALG])
 
 def create_refresh_token(id):
     return jwt.encode({
@@ -23,12 +30,12 @@ def create_refresh_token(id):
         'exp': datetime.datetime.utcnow() + datetime.timedelta(days=7),
         'iat': datetime.datetime.utcnow()
         },
-        'refresh_secret',
-        algorithm='HS256')
+        REFRESH_SECRET,
+        algorithm=ALG)
 
 def decode_refresh_token(refresh_token):
     return jwt.decode(
     refresh_token,
-    b64decode('refresh_secret'),
-    algorithms=['HS256']
+    REFRESH_SECRET,
+    algorithms=[ALG]
 )

@@ -1,6 +1,5 @@
-from django.shortcuts import render
 from django.contrib.auth import get_user_model
-from rest_framework import permissions
+from django.forms.models import model_to_dict
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.exceptions import APIException
@@ -34,7 +33,8 @@ class LoginApi(APIView):
         if not user.check_password(request.data['password']):
             raise APIException('Nieprawidłowe hasło')
 
-        access_token = create_access_token(user.id)
+
+        access_token = create_access_token(model_to_dict(user))
         refresh_token = create_refresh_token(user.id)
 
         response = Response()
@@ -45,7 +45,10 @@ class LoginApi(APIView):
 
 class RefreshApi(APIView):
     def post(self,request):
-        access_token = request.COOKIES.get('refresh_token')
+        refresh_token = request.COOKIES.get('refresh_token')
+        id = decode_refresh_token(refresh_token)['user_id']
+        user = User.objects.get(id=id)
+        access_token = create_access_token(model_to_dict(user))
         return Response({'access_token':access_token})
 
 
@@ -53,7 +56,7 @@ class TestApi(APIView):
     def get(self, request):
         access_token = get_authorization_header(request).split()[1]
         try:
-            user = decode_access_token(access_token)
+            user = decode_access_token(access_token)['user_id']
         except ExpiredSignatureError:
             raise APIException('Refresh your token')
-        return Response(user)
+        return Response({"elo2":user})
