@@ -1,5 +1,0 @@
-.git
-dockerfile
-*/__pycache__
-*/*/__pycache__
-email_api
