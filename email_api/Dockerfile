@@ -1,5 +1,5 @@
 
-FROM python:3.9
+FROM python:3.10.2-slim
 
 COPY ./requirements.txt requirements.txt
 
@@ -9,5 +9,4 @@ COPY . .
 
 EXPOSE 8001
 
-CMD ["uvicorn", "send_email:app", "--reload", "--port", "8001", "--host", "0.0.0.0"]
 

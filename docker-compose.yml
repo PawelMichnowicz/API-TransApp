@@ -1,17 +1,42 @@
 version: "3.9"
 
 services:
+
   mail:
     container_name: mail_container
     env_file: .env
     build: ./email_api
+    working_dir: /email_api
+    volumes:
+      - ./email_api:/email_api
     ports: 
       - "8001:8001"
+    command: uvicorn send_email:app --port 8001 --host 0.0.0.0 --reload
+
   api:
     container_name: api_container
     build: ./transapp
-    volumes:
-      - .:/code
-    # env_file: .env
+    environment:
+      - DB_HOST=db
+      - DB_NAME=post_db
+      - DB_USER=post_miska
+      - DB_PASS=123
     ports: 
       - "8000:8000"
+    depends_on:
+      - db
+    volumes:
+      - ./transapp:/code
+    command: gunicorn --reload transapp.wsgi:application --bind 0.0.0.0:8000 
+    # command: python3 manage.py runserver 0.0.0.0:8000
+
+  db:
+    image: postgres:13-alpine
+    environment:
+      - POSTGRES_DB=post_db
+      - POSTGRES_USER=post_miska
+      - POSTGRES_PASSWORD=123
+    volumes:
+    - /var/lib/postgresql
+
+

@@ -2,7 +2,7 @@ import jwt, datetime
 from dotenv import dotenv_values
 
 env_var = dotenv_values()
-ACCESS_SECRET = env_var['ACCESS_SECRET'] 
+ACCESS_SECRET = 'django-insecure-6014=#wx7fw#=*x3e-0l+(3jhj5p@bi2d=^q-qy3$k0i7!%qs)'
 REFRESH_SECRET = env_var['REFRESH_SECRET'] 
 ALG = env_var['ALG'] 
 

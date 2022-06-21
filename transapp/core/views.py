@@ -1,9 +1,12 @@
+from this import d
 from django.contrib.auth import get_user_model
 from django.forms.models import model_to_dict
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.exceptions import APIException
 from rest_framework.authentication import get_authorization_header
+from rest_framework.parsers import JSONParser
+from rest_framework.decorators import parser_classes
 from jwt.exceptions import ExpiredSignatureError
 
 from .serializers import UserSerializer
@@ -52,11 +55,14 @@ class RefreshApi(APIView):
         return Response({'access_token':access_token})
 
 
+@parser_classes((JSONParser,)) 
 class TestApi(APIView):
     def get(self, request):
-        access_token = get_authorization_header(request).split()[1]
-        try:
-            user = decode_access_token(access_token)['user_id']
-        except ExpiredSignatureError:
-            raise APIException('Refresh your token')
-        return Response({"elo2":user})
+        token = request.query_params['token']
+        user_id = decode_access_token(token)['user_id']
+        user = User.objects.get(id=user_id)
+        return Response({"username":user.username, "email":user.email})
+
+
+
+
