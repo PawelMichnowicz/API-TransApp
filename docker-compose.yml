@@ -27,16 +27,19 @@ services:
       - db
     volumes:
       - ./transapp:/code
-    command: gunicorn --reload transapp.wsgi:application --bind 0.0.0.0:8000 
-    # command: python3 manage.py runserver 0.0.0.0:8000
+    command: bash -c "python manage.py migrate && gunicorn --reload transapp.wsgi:application --bind 0.0.0.0:8000 "
 
   db:
+    container_name: db_container 
     image: postgres:13-alpine
     environment:
       - POSTGRES_DB=post_db
       - POSTGRES_USER=post_miska
       - POSTGRES_PASSWORD=123
     volumes:
-    - /var/lib/postgresql
+      - ./post_db:/var/lib/postgresql
 
+volumes:
+  post_db:
+    external: true
 

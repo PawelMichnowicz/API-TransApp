@@ -1,5 +1,6 @@
-db.sqlite3
+/post_db
 .env
+.aws
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
