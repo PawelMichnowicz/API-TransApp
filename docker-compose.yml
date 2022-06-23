@@ -9,7 +9,7 @@ services:
     working_dir: /email_api
     volumes:
       - ./email_api:/email_api
-    ports: 
+    ports:
       - "8001:8001"
     command: uvicorn send_email:app --port 8001 --host 0.0.0.0 --reload
 
@@ -21,7 +21,11 @@ services:
       - DB_NAME=post_db
       - DB_USER=post_miska
       - DB_PASS=123
-    ports: 
+      # - DB_HOST=db
+      # - DB_NAME=dbtest
+      # - DB_USER=miska
+      # - DB_PASS=123
+    ports:
       - "8000:8000"
     depends_on:
       - db
@@ -30,16 +34,28 @@ services:
     command: bash -c "python manage.py migrate && gunicorn --reload transapp.wsgi:application --bind 0.0.0.0:8000 "
 
   db:
-    container_name: db_container 
+    container_name: db_container
     image: postgres:13-alpine
     environment:
       - POSTGRES_DB=post_db
       - POSTGRES_USER=post_miska
       - POSTGRES_PASSWORD=123
     volumes:
-      - ./post_db:/var/lib/postgresql
+      - ./my-db2:/var/lib/pgsql/data
+
+  # db:
+  #   container_name: db_container
+  #   image: mysql/mysql-server:8.0
+  #   volumes:
+  #     - ./my-db:/var/lib/mysql
+  #   ports:
+  #     - "3306:3306"
+  #   environment:
+  #     - MYSQL_DATABASE=dbtest
+  #     - MYSQL_USER=miska
+  #     - MYSQL_PASSWORD=123
+  #     - MYSQL_ROOT_PASSWORD=123
+  #     - MYSQL_DATABASE_PORT=3306
 
 volumes:
-  post_db:
-    external: true
-
+  my-db2:
