@@ -1,7 +1,8 @@
-/post_db
+/my_db
 .env
 .aws
-my-db
+
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
