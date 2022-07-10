@@ -9,7 +9,6 @@ COPY . .
 
 RUN cp -r providers/credentials/.aws ~/
 
-RUN apt-get update && apt-get install iputils-ping -y
 
 EXPOSE 8001
 

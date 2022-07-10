@@ -13,6 +13,35 @@ services:
       - "8001:8001"
     command: uvicorn send_email:app --port 8001 --host 0.0.0.0 --reload
 
+  redis:
+    image: redis:6.2-alpine
+
+  celery_worker:
+    container_name: celery_worker
+    build: ./email_api
+    command: celery -A celery_worker.celery worker --loglevel=info
+    volumes:
+      - ./email_api:/email_api
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    depends_on:
+      - mail
+      - redis
+
+  flower:
+    container_name: flower
+    build: ./email_api
+    command: celery -A celery_worker.celery flower --port=5555
+    ports:
+      - 5556:5555
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    depends_on:
+      - mail
+      - redis
+      - celery_worker
+
+
   api:
     container_name: api_container
     build: ./transapp
@@ -21,17 +50,13 @@ services:
       - DB_NAME=post_db
       - DB_USER=post_miska
       - DB_PASS=123
-      # - DB_HOST=db
-      # - DB_NAME=dbtest
-      # - DB_USER=miska
-      # - DB_PASS=123
     ports:
       - "8000:8000"
     depends_on:
       - db
     volumes:
       - ./transapp:/code
-    command: bash -c "python manage.py migrate && gunicorn --reload transapp.wsgi:application --bind 0.0.0.0:8000 "
+    command: bash -c "python manage.py wait_for_db && python manage.py migrate && gunicorn --reload transapp.wsgi:application --bind 0.0.0.0:8000 "
 
   db:
     container_name: db_container
@@ -42,20 +67,6 @@ services:
       - POSTGRES_PASSWORD=123
     volumes:
       - ./my-db2:/var/lib/pgsql/data
-
-  # db:
-  #   container_name: db_container
-  #   image: mysql/mysql-server:8.0
-  #   volumes:
-  #     - ./my-db:/var/lib/mysql
-  #   ports:
-  #     - "3306:3306"
-  #   environment:
-  #     - MYSQL_DATABASE=dbtest
-  #     - MYSQL_USER=miska
-  #     - MYSQL_PASSWORD=123
-  #     - MYSQL_ROOT_PASSWORD=123
-  #     - MYSQL_DATABASE_PORT=3306
 
 volumes:
   my-db2:
