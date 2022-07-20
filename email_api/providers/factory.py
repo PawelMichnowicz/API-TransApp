@@ -21,22 +21,20 @@ class Provider(ABC):
         pass
 
 
-def get_providers(is_enum=False):
+
+def get_providers():
     dict_providers = {}
     for class_provider in Provider.__subclasses__():
-        if is_enum:
-            dict_providers[class_provider.__name__] = str(class_provider.__name__)
-        else:
-            dict_providers[class_provider.__name__] = class_provider
+        dict_providers[class_provider.__name__] = class_provider
     return dict_providers
 
 
 def create_provider(name, sender, recipent):
     try:
-        provider = get_providers()[name]
-    except:
+        return get_providers()[name](sender, recipent)
+    except: # as error
         return UnknownProvider()
-    return provider(sender, recipent)
+
 
 
 class MailGunProvider(Provider):
