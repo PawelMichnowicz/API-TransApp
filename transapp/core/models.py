@@ -16,7 +16,6 @@ class UserManager(BaseUserManager):
         user = self.model(username=username, **extra_fields)
         user.set_password(password)
         user.save()
-
         return user
 
     def create_superuser(self, username, password=None, **extra_fields):
@@ -27,19 +26,23 @@ class UserManager(BaseUserManager):
         user.save()
 
 
-class User(AbstractBaseUser):
+class User(AbstractBaseUser, PermissionsMixin ):
+
+    USER = 'USR'
+    DIRECTOR = 'DIR'
 
     CHOICES = (
-        ('USR', 'User'),
-        ('DIR', 'Director'),
+        (USER, 'User'),
+        (DIRECTOR, 'Director'),
     )
 
     username = models.CharField(max_length=25, unique=True)
     email = models.EmailField(max_length=255, unique=True)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
-    position = models.CharField(max_length=3, choices=CHOICES, default=CHOICES[0])
+    position = models.CharField(max_length=3, choices=CHOICES, default=USER)
 
     objects = UserManager()
 
     REQUIRED_FIELDS = ['email', 'position']
+    USERNAME_FIELD = 'username'
