@@ -9,6 +9,7 @@ class Vehicle(models.Model):
     capacity = models.IntegerField()
     is_refrigerate = models.BooleanField(default=False)
     is_available = models.BooleanField(default=True)
+    description = models.TextField(default='')
 
     class Meta:
         ordering = ['is_available', '-capacity']
@@ -22,9 +23,10 @@ class Route(models.Model):
     origin = models.CharField(max_length=100)
     destination = models.CharField(max_length=100)
     duration = models.DurationField(blank=True, null=True)
+    description = models.TextField(default='')
 
     def __str__(self):
-        return self.origin + "-" + self.destination
+        return self.origin + "->" + self.destination
 
 
 class Offer(models.Model):
@@ -32,6 +34,7 @@ class Offer(models.Model):
     id_offer = models.CharField(max_length=5)
     route = models.ForeignKey(Route, on_delete=models.CASCADE, related_name='offers')
     need_refrigerate = models.BooleanField(default=False)
+    description = models.TextField(default='')
 
     def save(self, *args, **kwargs):
         if not self.id_offer:
@@ -48,7 +51,7 @@ class Offer(models.Model):
         elif self.need_refrigerate and not vehicle.is_refrigerate:
             raise Exception('Vehicle need refigerator')
 
-        AcceptedOffer(id_offer=self.id_offer, vehicle=vehicle, route=self.route).save()
+        AcceptedOffer(id_offer=self.id_offer, vehicle=vehicle, route=self.route, description=self.description).save()
         self.delete()
         vehicle.is_available = False
         vehicle.save()
@@ -59,6 +62,7 @@ class AcceptedOffer(models.Model):
     id_offer = models.CharField(max_length=5)
     vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE)
     route = models.ForeignKey(Route, on_delete=models.CASCADE)
+    description = models.TextField(default='')
 
 
 

@@ -1,10 +1,9 @@
 from django.urls import path, include
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from rest_framework_simplejwt.views import TokenVerifyView
 from rest_framework import routers
 
 from . import views
 
+app_name = 'transport'
 
 router = routers.SimpleRouter()
 router.register('vehicles', views.VehicleApi)

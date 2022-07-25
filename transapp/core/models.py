@@ -1,4 +1,3 @@
-from asyncio import FastChildWatcher
 from django.db import models
 from django.contrib.auth.models import (
     AbstractBaseUser,
@@ -6,6 +5,7 @@ from django.contrib.auth.models import (
     PermissionsMixin,
 )
 
+from storage.models import Warehouse
 
 class UserManager(BaseUserManager):
 
@@ -26,23 +26,26 @@ class UserManager(BaseUserManager):
         user.save()
 
 
-class User(AbstractBaseUser, PermissionsMixin ):
+class User(AbstractBaseUser, PermissionsMixin):
 
     USER = 'USR'
     DIRECTOR = 'DIR'
+    WAREHOUSER = 'WHR'
 
     CHOICES = (
         (USER, 'User'),
+        (WAREHOUSER, 'Warehouser'),
         (DIRECTOR, 'Director'),
     )
 
     username = models.CharField(max_length=25, unique=True)
-    email = models.EmailField(max_length=255, unique=True)
+    email = models.EmailField(max_length=255)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     position = models.CharField(max_length=3, choices=CHOICES, default=USER)
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, related_name='workers', blank=True, null=True, default=None) # workplace - contentype
 
     objects = UserManager()
 
-    REQUIRED_FIELDS = ['email', 'position']
+    REQUIRED_FIELDS = []
     USERNAME_FIELD = 'username'
