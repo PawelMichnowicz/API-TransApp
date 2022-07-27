@@ -17,6 +17,8 @@ WEEKDAYS = [
     (7, "Sunday"),
 ]
 
+TIMESPAN_ACTIONS = ['send', 'receive']
+
 class Time(models.Model):
 
     from_hour = models.TimeField()
@@ -37,13 +39,13 @@ class OpenningTime(Time):
 
 class Timespan(Time):
 
-    month_day = models.DateField()
+    monthday = models.DateField()
 
     def __str__(self) :
-        return f"{self.get_month_day_display()} {self.from_hour}-{self.to_hour}"
+        return f"{self.monthday} {self.from_hour}-{self.to_hour}"
 
 class Timedelta(Time):
-
+    # not use
     def save(self, *args, **kwargs):
         self.duration = self.from_hour - self.to_hour
         super(Timedelta, self).save(*args, **kwargs)
@@ -78,7 +80,7 @@ def set_default_open_time(**kwargs):
 class ReceiveAction(models.Model):
 
     workers = models.ManyToManyField(get_user_model())
-    time_delta = models.ForeignKey(Timedelta, on_delete=models.PROTECT, null=True, blank=True, default=None)
+    duration = models.DurationField(default=datetime.timedelta(seconds=(60*60)))
     warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE)
     id_offer = models.CharField(max_length=5)
     description = models.TextField(default='')
@@ -87,7 +89,7 @@ class ReceiveAction(models.Model):
 class SendAction(models.Model):
 
     workers = models.ManyToManyField(get_user_model())
-    time_delta = models.ForeignKey(Timedelta, on_delete=models.PROTECT, null=True, blank=True, default=None)
+    duration = models.DurationField(default=datetime.timedelta(seconds=(60*60)))
     warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE)
     id_offer = models.CharField(max_length=5)
     description = models.TextField(default='')

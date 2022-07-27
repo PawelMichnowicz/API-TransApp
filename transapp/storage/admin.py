@@ -8,11 +8,11 @@ class WarehouseAdmin(admin.ModelAdmin):
 
 @admin.register(ReceiveAction)
 class ReceiveActionAdmin(admin.ModelAdmin):
-    list_display = ['pk',] # 'time_delta', 'warehouse']
+    list_display = ['pk', '__str__'] # 'time_delta', 'warehouse']
 
 @admin.register(SendAction)
 class SendActionAdmin(admin.ModelAdmin):
-    list_display = ['pk',] # 'time_delta', 'warehouse']
+    list_display = ['pk', '__str__'] # 'time_delta', 'warehouse']
 
 @admin.register(OpenningTime)
 class OpenningTimeAdmin(admin.ModelAdmin):
@@ -20,9 +20,9 @@ class OpenningTimeAdmin(admin.ModelAdmin):
 
 @admin.register(Timespan)
 class TimespanAdmin(admin.ModelAdmin):
-    list_display = ['pk', ]
+    list_display = ['pk', '__str__']
 
 @admin.register(Timedelta)
 class TimedeltaAdmin(admin.ModelAdmin):
-    list_display = ['pk', ]
+    list_display = ['pk', '__str__']
 

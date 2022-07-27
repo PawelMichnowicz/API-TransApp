@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 
-User = get_user_model()
+
 
 class UserSerializer(serializers.ModelSerializer):
     password2 = serializers.CharField(
@@ -10,13 +10,13 @@ class UserSerializer(serializers.ModelSerializer):
         style={"input_type": 'password'}, write_only=True)
 
     class Meta:
-        model = User
+        model = get_user_model()
         fields = ['username', 'email', 'password', 'password2']
 
     def validate(self, data):
         if data['password'] != data['password2']:
             raise serializers.ValidationError("Hasła nie są identyczne")
-        if User.objects.filter(email=data['email']).exists():
+        if get_user_model().objects.filter(email=data['email']).exists():
             raise serializers.ValidationError("Email zajęty")
         return data
 
@@ -27,4 +27,3 @@ class UserSerializer(serializers.ModelSerializer):
         user.set_password(password)
         user.save()
         return user
-    

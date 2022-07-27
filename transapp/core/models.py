@@ -39,11 +39,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     )
 
     username = models.CharField(max_length=25, unique=True)
-    email = models.EmailField(max_length=255)
+    email = models.EmailField(max_length=255, blank=True, null=True, default=None)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     position = models.CharField(max_length=3, choices=CHOICES, default=USER)
-    warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, related_name='workers', blank=True, null=True, default=None) # workplace - contentype
+    workplace = models.ForeignKey(Warehouse, on_delete=models.CASCADE, related_name='workers', blank=True, null=True, default=None) # contentypes in future
 
     objects = UserManager()
 

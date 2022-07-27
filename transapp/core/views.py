@@ -9,8 +9,6 @@ from .serializers import UserSerializer
 from .authentication import decode_access_token
 
 
-User = get_user_model()
-
 class RegisterApi(APIView):
     permission_classes = [AllowAny]
 
@@ -24,8 +22,7 @@ class RegisterApi(APIView):
 
 
 class TestApi(APIView):
+
     def get(self, request):
-        token = request.query_params['token']
-        user_id = decode_access_token(token)['user_id']
-        user = User.objects.get(id=user_id)
-        return Response({"username":user.username, "email":user.email})
+        user = request.user
+        return Response({"username":user.username, "email":user.email, 'position':user.position, 'warehouse':user.workplace.pk})
