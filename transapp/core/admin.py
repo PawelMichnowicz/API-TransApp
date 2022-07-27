@@ -8,7 +8,7 @@ class UserAdmin(BaseUserAdmin):
     """Define the admin pages"""
     list_display = [ 'pk', 'username', 'email', 'workplace', 'position', 'is_superuser']
     fieldsets = (
-        (None, {'fields': ('username', 'workplace', 'position', 'email', 'password')}),
+        (None, {'fields': ('username', 'workplace', 'position', 'email', 'password', 'action_set')}),
     )
 
 admin.site.register(models.User, UserAdmin)

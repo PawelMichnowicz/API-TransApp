@@ -8,9 +8,9 @@ from rest_framework.serializers import ValidationError
 
 from core.permissions import IsDirector, WorkHere
 
-from .models import Warehouse, ReceiveAction, SendAction, Timespan
-from .serializers import WarehouseSerializer, ReceiveActionSerializer, SendActionSerializer, TimespanSerializer
-from .serializers import WarehouseDetailSerializer, ReceiveActionDetailSerializer, SendActionDetailSerializer, WarehouserStatsSerializer, WarehouseWorkerSerializer
+from .models import Warehouse, Action, Timespan
+from .serializers import WarehouseSerializer, ActionSerializer, TimespanSerializer
+from .serializers import WarehouseDetailSerializer, WarehouserStatsSerializer, WarehouseWorkerSerializer
 
 
 class AddTimespanApi(generics.GenericAPIView):
@@ -28,13 +28,7 @@ class AddTimespanApi(generics.GenericAPIView):
         timespan = serializer.save()
 
         instance = self.get_object()
-        match action:
-            case 'send':
-                instance.send_available.add(timespan)
-            case 'receive':
-                instance.receive_available.add(timespan)
-            case _:
-                ValidationError('Unavailable action')
+        instance.action_available.add(timespan)
         instance.save()
 
         return Response({'name': 'instance.name', f'{action}_timespan': serializer.data})
@@ -95,29 +89,11 @@ class WarehouseApi(mixins.RetrieveModelMixin,
         return super().get_permissions()
 
 
-class ReceiveActionApi(mixins.RetrieveModelMixin,
-                       mixins.ListModelMixin,
-                       viewsets.GenericViewSet):
+class ActionApi(mixins.RetrieveModelMixin,
+                mixins.ListModelMixin,
+                viewsets.GenericViewSet):
 
-    queryset = ReceiveAction.objects.all()
-    serializer_class = ReceiveActionDetailSerializer
+    queryset = Action.objects.all()
+    serializer_class = ActionSerializer
     permission_classes = [IsDirector, ]
 
-    def get_serializer_class(self):
-        if self.action == 'list':
-            return ReceiveActionSerializer
-        return self.serializer_class
-
-
-class SendActionApi(mixins.RetrieveModelMixin,
-                    mixins.ListModelMixin,
-                    viewsets.GenericViewSet):
-
-    queryset = SendAction.objects.all()
-    serializer_class = SendActionDetailSerializer
-    permission_classes = [IsDirector, ]
-
-    def get_serializer_class(self):
-        if self.action == 'list':
-            return SendActionSerializer
-        return self.serializer_class

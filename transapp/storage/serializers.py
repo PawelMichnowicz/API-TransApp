@@ -2,9 +2,7 @@ from rest_framework import serializers
 
 from django.contrib.auth import get_user_model
 
-from .models import Timespan, Warehouse, ReceiveAction, SendAction
-
-ACTIONS = ['send', 'receive']
+from .models import Timespan, Warehouse, Action
 
 
 class TimespanSerializer(serializers.ModelSerializer):
@@ -37,12 +35,9 @@ class WarehouserStatsSerializer(serializers.ModelSerializer):
             }
         }
         stats = []
-        for send_action in obj.sendaction_set.all():
-            stats.append({'id_offer': send_action.id_offer,
-                         'action': 'send', 'duration': send_action.duration})
-        for receive_action in obj.receiveaction_set.all():
-            stats.append({'id_offer': receive_action.id_offer,
-                         'action': 'receive', 'duration': receive_action.duration})
+        for action in obj.action_set.values():
+            stats.append({'id_offer': action['id_offer'],
+                         'action': action['action_type'], 'duration': action['duration']})
         return stats
 
     class Meta:
@@ -54,8 +49,7 @@ class WarehouseSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Warehouse
-        fields = ['pk', 'name', 'receive_available',
-                  'send_available', 'openning_time', 'workers']
+        fields = ['pk', 'name', 'action_available', 'openning_time', 'workers']
 
 
 class WarehouseDetailSerializer(WarehouseSerializer):
@@ -64,27 +58,8 @@ class WarehouseDetailSerializer(WarehouseSerializer):
         fields = WarehouseSerializer.Meta.fields + ['description']
 
 
-class ReceiveActionSerializer(serializers.ModelSerializer):
+class ActionSerializer(serializers.ModelSerializer):
 
     class Meta:
-        model = ReceiveAction
+        model = Action
         fields = ['pk', ]
-
-
-class ReceiveActionDetailSerializer(ReceiveActionSerializer):
-
-    class Meta(ReceiveActionSerializer.Meta):
-        fields = ReceiveActionSerializer.Meta.fields + ['description']
-
-
-class SendActionSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = SendAction
-        fields = ['pk', ]
-
-
-class SendActionDetailSerializer(SendActionSerializer):
-
-    class Meta(SendActionSerializer.Meta):
-        fields = SendActionSerializer.Meta.fields + ['description']
