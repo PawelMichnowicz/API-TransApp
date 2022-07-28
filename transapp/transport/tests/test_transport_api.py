@@ -4,18 +4,19 @@ from django.urls import reverse
 
 from rest_framework import status
 from rest_framework.test import APIClient
+from core.constants import WORK_POSITION
 
-from transport.models import Route, Vehicle, Offer, AcceptedOffer
-from transport.serializers import RouteSerializer, VehicleSerializer, OfferSerializer, AcceptedOfferSerializer, \
-                        RouteDetailSerializer, VehicleDetailSerializer, OfferDetailSerializer
+from transport.models import Route, Vehicle, Offer
+from transport.serializers import RouteSerializer, VehicleSerializer, OfferSerializer,\
+    RouteSerializer, VehicleSerializer, OfferSerializer
 
 ROUTE_URL_LIST = reverse('transport:route-list')
 VEHICLE_URL = reverse('transport:vehicle-list')
 OFFER_URL = reverse('transport:offer-list')
-ACCEPTED_OFFER_URL = reverse('transport:acceptedoffer-list')
+
 
 def get_detail_url(model, id):
-    return reverse(f'transport:{model.__name__.lower()}-detail', args=[id,])
+    return reverse(f'transport:{model.__name__.lower()}-detail', args=[id, ])
 
 
 class TestModels(TestCase):
@@ -23,12 +24,12 @@ class TestModels(TestCase):
     def setUp(self):
 
         self.user = get_user_model().objects.create_user(
-            username='user', password='123', position='USR')
+            username='user', password='123', position=WORK_POSITION[0])
         self.user_client = APIClient()
         self.user_client.force_authenticate(self.user)
 
         self.director = get_user_model().objects.create_user(
-            username='dire', password='123', position='DIR')
+            username='dire', password='123', position=WORK_POSITION[2])
         self.director_client = APIClient()
         self.director_client.force_authenticate(self.director)
 
@@ -56,13 +57,14 @@ class TestModels(TestCase):
 
     def test_detail_route(self):
 
-        res_dir = self.director_client.get(get_detail_url(Route, self.route.pk))
+        res_dir = self.director_client.get(
+            get_detail_url(Route, self.route.pk))
         res_usr = self.user_client.get(get_detail_url(Route, self.route.pk))
         self.assertEqual(res_dir.status_code, status.HTTP_200_OK)
         self.assertEqual(res_usr.status_code, status.HTTP_403_FORBIDDEN)
 
         route = Route.objects.get(pk=self.route.pk)
-        serializer = RouteDetailSerializer(route)
+        serializer = RouteSerializer(route)
         self.assertEqual(res_dir.data, serializer.data)
 
     def test_list_vehicles(self):
@@ -78,13 +80,15 @@ class TestModels(TestCase):
 
     def test_detail_vehicle(self):
 
-        res_dir = self.director_client.get(get_detail_url(Vehicle, self.vehicle.pk))
-        res_usr = self.user_client.get(get_detail_url(Vehicle, self.vehicle.pk))
+        res_dir = self.director_client.get(
+            get_detail_url(Vehicle, self.vehicle.pk))
+        res_usr = self.user_client.get(
+            get_detail_url(Vehicle, self.vehicle.pk))
         self.assertEqual(res_dir.status_code, status.HTTP_200_OK)
         self.assertEqual(res_usr.status_code, status.HTTP_403_FORBIDDEN)
 
         vehicle = Vehicle.objects.get(registration=self.vehicle.registration)
-        serializer = VehicleDetailSerializer(vehicle)
+        serializer = VehicleSerializer(vehicle)
         self.assertEqual(res_dir.data, serializer.data)
 
     def test_list_offers(self):
@@ -100,26 +104,12 @@ class TestModels(TestCase):
 
     def test_detail_offer(self):
 
-        res_dir = self.director_client.get(get_detail_url(Offer, self.offer.pk))
+        res_dir = self.director_client.get(
+            get_detail_url(Offer, self.offer.pk))
         res_usr = self.user_client.get(get_detail_url(Offer, self.offer.pk))
         self.assertEqual(res_dir.status_code, status.HTTP_200_OK)
         self.assertEqual(res_usr.status_code, status.HTTP_403_FORBIDDEN)
 
         offer = Offer.objects.get(pk=self.offer.pk)
-        serializer = OfferDetailSerializer(offer)
+        serializer = OfferSerializer(offer)
         self.assertEqual(res_dir.data, serializer.data)
-
-    def test_accepted_offer(self):
-
-        res_dir = self.director_client.get(ACCEPTED_OFFER_URL)
-        res_usr = self.user_client.get(ACCEPTED_OFFER_URL)
-        self.assertEqual(res_dir.status_code, status.HTTP_200_OK)
-        self.assertEqual(res_usr.status_code, status.HTTP_403_FORBIDDEN)
-
-        accepted_offers = AcceptedOffer.objects.all()
-        serializer = AcceptedOfferSerializer(accepted_offers, many=True)
-        self.assertEqual(res_dir.data, serializer.data)
-
-        self.offer.accept(self.vehicle_ref)
-        self.assertFalse(Offer.objects.filter(id_offer=self.offer.id_offer).exists())
-        self.assertTrue(AcceptedOffer.objects.filter(id_offer=self.offer.id_offer).exists())

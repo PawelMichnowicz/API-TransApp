@@ -5,7 +5,9 @@ from django.contrib.auth.models import (
     PermissionsMixin,
 )
 
+from .constants import WORK_POSITION
 from storage.models import Warehouse
+
 
 class UserManager(BaseUserManager):
 
@@ -28,21 +30,18 @@ class UserManager(BaseUserManager):
 
 class User(AbstractBaseUser, PermissionsMixin):
 
-    USER = 'USR'
-    DIRECTOR = 'DIR'
-    WAREHOUSER = 'WHR'
 
-    CHOICES = (
-        (USER, 'User'),
-        (WAREHOUSER, 'Warehouser'),
-        (DIRECTOR, 'Director'),
-    )
+    class WorkPosition(models.TextChoices):
+        USER = WORK_POSITION[0], 'User'
+        WAREHOUSER = WORK_POSITION[1], 'Warehouser'
+        DIRECTOR = WORK_POSITION[2], 'Director'
+
 
     username = models.CharField(max_length=25, unique=True)
     email = models.EmailField(max_length=255, blank=True, null=True, default=None)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
-    position = models.CharField(max_length=3, choices=CHOICES, default=USER)
+    position = models.CharField(max_length=255, choices=WorkPosition.choices, default=WorkPosition.USER)
     workplace = models.ForeignKey(Warehouse, on_delete=models.CASCADE, related_name='workers', blank=True, null=True, default=None) # contentypes in future
 
     objects = UserManager()

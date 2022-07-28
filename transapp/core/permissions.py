@@ -1,9 +1,10 @@
 from rest_framework.permissions import BasePermission
+from core.constants import WORK_POSITION
 
 class IsDirector(BasePermission):
 
     def has_permission(self, request, view):
-        return request.user.position == 'DIR'
+        return request.user.position == WORK_POSITION[2]
 
 
 class WorkHere(BasePermission):

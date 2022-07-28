@@ -1,3 +1,4 @@
+import uuid
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.db.models.signals import post_save
@@ -5,19 +6,7 @@ from django.dispatch import receiver
 
 import datetime
 
-DEFAULT_TIME_OPEN = [(8, 16), (8, 16), (8, 16), (8, 16), (8, 16)]
-
-WEEKDAYS = [
-    (1, "Monday"),
-    (2, "Tuesday"),
-    (3, "Wednesday"),
-    (4, "Thursday"),
-    (5, "Friday"),
-    (6, "Saturday"),
-    (7, "Sunday"),
-]
-
-TIMESPAN_ACTIONS = ['send', 'receive']
+from .constants import DEFAULT_TIME_OPEN, WEEKDAYS, TimespanAction
 
 
 class Time(models.Model):
@@ -35,23 +24,25 @@ class OpenningTime(Time):
         choices=WEEKDAYS)
 
     def __str__(self):
-        return f"{self.get_weekday_display()} {self.from_hour}-{self.to_hour}"
+        return f"{self.get_weekday_display()} {self.from_hour.strftime('%H:%M')}-{self.to_hour.strftime('%H:%M')}"
 
 
 class Timespan(Time):
 
+    class TimespanAction(models.TextChoices):
+        SEND = TimespanAction.SEND.name.lower(), 'Send'
+        RECEIVE = TimespanAction.RECEIVE.name.lower(), 'Receive'
+
     monthday = models.DateField()
+    action = models.CharField(max_length=25, choices=TimespanAction.choices)
 
     def __str__(self):
-        return f"{self.monthday} {self.from_hour}-{self.to_hour}"
+        action = f"{self.action}".upper()
+        return f"{action} {self.monthday.strftime('%b%d')} {self.from_hour.strftime('%H:%M')}-{self.to_hour.strftime('%H:%M')}"
 
-# class Timedelta(Time):
-#     # not use
-#     def save(self, *args, **kwargs):
-#         self.duration = self.from_hour - self.to_hour
-#         super(Timedelta, self).save(*args, **kwargs)
-
-################################################################################
+    # def save(self, *args, **kwargs):
+    #     self.duration = self.from_hour - self.to_hour
+    #     super(Timespan, self).save(*args, **kwargs)
 
 
 class Warehouse(models.Model):
@@ -65,7 +56,6 @@ class Warehouse(models.Model):
 
     def __str__(self):
         return self.name
-
 
 @receiver(post_save, sender=Warehouse, dispatch_uid='set_department')
 def set_default_open_time(**kwargs):
@@ -86,7 +76,7 @@ class Action(models.Model):
     duration = models.DurationField(
         default=datetime.timedelta(seconds=(60*60)))
     warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE)
-    id_offer = models.CharField(max_length=5)
+    id_offer = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     description = models.TextField(default='')
-    action_type = models.CharField(max_length=20, default='send')
+    action_type = models.CharField(max_length=255, default=TimespanAction.SEND)
 

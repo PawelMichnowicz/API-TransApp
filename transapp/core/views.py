@@ -6,8 +6,6 @@ from rest_framework.permissions import AllowAny
 
 
 from .serializers import UserSerializer
-from .authentication import decode_access_token
-
 
 class RegisterApi(APIView):
     permission_classes = [AllowAny]

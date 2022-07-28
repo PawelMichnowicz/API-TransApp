@@ -1,5 +1,5 @@
 from django.db import models
-from django.utils.crypto import get_random_string
+import uuid
 
 # Create your models here.
 
@@ -31,38 +31,15 @@ class Route(models.Model):
 
 class Offer(models.Model):
 
-    id_offer = models.CharField(max_length=5)
+    id_offer = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     route = models.ForeignKey(Route, on_delete=models.CASCADE, related_name='offers')
     need_refrigerate = models.BooleanField(default=False)
     description = models.TextField(default='')
-
-    def save(self, *args, **kwargs):
-        if not self.id_offer:
-            while True:
-                id_offer = get_random_string(length=5)
-                if not Offer.objects.filter(id_offer=id_offer).exists() and not AcceptedOffer.objects.filter(id_offer=id_offer).exists():
-                    break
-            self.id_offer = id_offer
-        return super().save(*args, **kwargs)
-
-    def accept(self, vehicle: Vehicle):
-        if not vehicle.is_available:
-            raise Exception('Vehicle is unavailable')
-        elif self.need_refrigerate and not vehicle.is_refrigerate:
-            raise Exception('Vehicle need refigerator')
-
-        AcceptedOffer(id_offer=self.id_offer, vehicle=vehicle, route=self.route, description=self.description).save()
-        self.delete()
-        vehicle.is_available = False
-        vehicle.save()
+    vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, blank=True, null=True, default=None)
+    accepted = models.BooleanField(default=False)
 
 
-class AcceptedOffer(models.Model):
 
-    id_offer = models.CharField(max_length=5)
-    vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE)
-    route = models.ForeignKey(Route, on_delete=models.CASCADE)
-    description = models.TextField(default='')
 
 
 

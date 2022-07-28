@@ -9,7 +9,6 @@ router = routers.SimpleRouter()
 router.register('vehicles', views.VehicleApi)
 router.register('routes', views.RouteApi)
 router.register('offers', views.OfferApi)
-router.register('accepted-offers', views.AcceptedOfferApi)
 
 urlpatterns = [
     path('', include(router.urls)),

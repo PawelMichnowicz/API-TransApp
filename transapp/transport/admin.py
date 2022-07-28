@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Vehicle, Route, Offer, AcceptedOffer
+from .models import Vehicle, Route, Offer
 
 @admin.register(Vehicle)
 class VehicleAdmin(admin.ModelAdmin):
@@ -12,11 +12,8 @@ class RouteAdmin(admin.ModelAdmin):
 
 @admin.register(Offer)
 class OfferAdmin(admin.ModelAdmin):
-    list_display = ['pk','id_offer','route', 'need_refrigerate']
+    list_display = ['pk','id_offer','route', 'vehicle', 'need_refrigerate', 'accepted']
 
-@admin.register(AcceptedOffer)
-class AcceptedOfferAdmin(admin.ModelAdmin):
-    list_display = ['pk','id_offer','vehicle', 'route']
 
 
 

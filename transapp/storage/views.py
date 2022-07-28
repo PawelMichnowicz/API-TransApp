@@ -7,10 +7,11 @@ from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 
 from core.permissions import IsDirector, WorkHere
+from core.constants import WORK_POSITION
 
 from .models import Warehouse, Action, Timespan
 from .serializers import WarehouseSerializer, ActionSerializer, TimespanSerializer
-from .serializers import WarehouseDetailSerializer, WarehouserStatsSerializer, WarehouseWorkerSerializer
+from .serializers import WarehouseSerializer, WarehouserStatsSerializer, WarehouseWorkerSerializer
 
 
 class AddTimespanApi(generics.GenericAPIView):
@@ -21,9 +22,7 @@ class AddTimespanApi(generics.GenericAPIView):
 
     def post(self, request, pk, *args, **kwargs):
 
-        data = request.data.copy()
-        action = str(data.pop('action')[0])
-        serializer = self.get_serializer(data=data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         timespan = serializer.save()
 
@@ -31,19 +30,19 @@ class AddTimespanApi(generics.GenericAPIView):
         instance.action_available.add(timespan)
         instance.save()
 
-        return Response({'name': 'instance.name', f'{action}_timespan': serializer.data})
+        return Response({'warehouse_id': instance.pk, f'action_timespan': serializer.data})
 
 
 class WorkerDowngradeApi(generics.GenericAPIView):
 
-    queryset = get_user_model().objects.filter(position='WHR').all()
+    queryset = get_user_model().objects.filter(position=WORK_POSITION[1]).all()
     permission_classes = [IsDirector, ]
 
     def post(self, request, pk, format=None):
         user = self.get_object()
         user.email = None
         user.workplace = None
-        user.position = 'USR'
+        user.position = WORK_POSITION[0]
         user.save()
         return Response({'username': user.username, 'position': user.position, 'workplace': user.workplace})
 
@@ -51,14 +50,14 @@ class WorkerDowngradeApi(generics.GenericAPIView):
 class WorkerUpdateApi(mixins.UpdateModelMixin,
                       viewsets.GenericViewSet):
 
-    queryset = get_user_model().objects.filter(position='USR').all()
+    queryset = get_user_model().objects.filter(position=WORK_POSITION[0]).all()
     permission_classes = [IsDirector, ]
     serializer_class = WarehouseWorkerSerializer
 
     def update(self, request, *args, **kwargs):
 
         instance = self.get_object()
-        instance.position = 'WHR'
+        instance.position = WORK_POSITION[1]
         serializer = self.get_serializer(
             instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -69,7 +68,7 @@ class WorkerUpdateApi(mixins.UpdateModelMixin,
 class WorkersStatsApi(mixins.ListModelMixin,
                       viewsets.GenericViewSet):
 
-    queryset = get_user_model().objects.filter(position='WHR').all()
+    queryset = get_user_model().objects.filter(position=WORK_POSITION[1]).all()
     permission_classes = [IsDirector, ]
     serializer_class = WarehouserStatsSerializer
 
@@ -80,7 +79,7 @@ class WarehouseApi(mixins.RetrieveModelMixin,
                    viewsets.GenericViewSet):
 
     queryset = Warehouse.objects.all()
-    serializer_class = WarehouseDetailSerializer
+    serializer_class = WarehouseSerializer
     permission_classes = [IsAuthenticated, ]
 
     def get_permissions(self):
@@ -96,4 +95,3 @@ class ActionApi(mixins.RetrieveModelMixin,
     queryset = Action.objects.all()
     serializer_class = ActionSerializer
     permission_classes = [IsDirector, ]
-

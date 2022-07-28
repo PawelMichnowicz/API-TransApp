@@ -7,14 +7,10 @@ from .models import Timespan, Warehouse, Action
 
 class TimespanSerializer(serializers.ModelSerializer):
 
-    action = serializers.CharField(required=False)
-
     class Meta:
         model = Timespan
         fields = ['monthday', 'from_hour', 'to_hour', 'action']
 
-    def save(self, **kwargs):
-        return super().save(**kwargs)
 
 
 class WarehouseWorkerSerializer(serializers.ModelSerializer):
@@ -50,13 +46,7 @@ class WarehouseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Warehouse
         fields = ['pk', 'name', 'action_available', 'openning_time', 'workers']
-
-
-class WarehouseDetailSerializer(WarehouseSerializer):
-
-    class Meta(WarehouseSerializer.Meta):
-        fields = WarehouseSerializer.Meta.fields + ['description']
-
+        
 
 class ActionSerializer(serializers.ModelSerializer):
 
