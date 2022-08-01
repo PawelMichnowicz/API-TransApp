@@ -2,19 +2,19 @@ from posixpath import basename
 from django.urls import path, include
 from rest_framework import routers
 
-from . import views
+from .views import WarehouseApi, ActionApi, WorkersStatsApi, AddTimespanApi
 
 app_name = 'storage'
 
 router = routers.SimpleRouter()
-router.register('warehouses', views.WarehouseApi)
-router.register('actions', views.ActionApi)
-router.register('worker-stats', views.WorkersStatsApi, basename='stats')
-# router.register('worker-upgrade', views.WorkerUpdateApi, basename='upgrade')
+router.register('warehouses', WarehouseApi)
+router.register('actions', ActionApi)
+router.register('worker-stats', WorkersStatsApi, basename='stats')
+
 
 
 urlpatterns = [
     path('', include(router.urls)),
     path('warehouse-timespan/<int:pk>/',
-         views.AddTimespanApi.as_view(), name='add-timespan'),
+         AddTimespanApi.as_view(), name='add-timespan'),
 ]

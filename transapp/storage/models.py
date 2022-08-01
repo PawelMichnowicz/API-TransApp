@@ -26,15 +26,14 @@ class Time(models.Model):
 
 
 class ActionChoice(models.TextChoices):
-        SEND = TimespanActionEnum.SEND.name.lower(), 'Send'
-        RECEIVE = TimespanActionEnum.RECEIVE.name.lower(), 'Receive'
+    SEND = TimespanActionEnum.SEND.value, 'Send'
+    RECEIVE = TimespanActionEnum.RECEIVE.value, 'Receive'
 
 
 class Timespan(Time):
 
     monthday = models.DateField()
     action = models.CharField(max_length=255, choices=ActionChoice.choices)
-
 
     def __str__(self):
         action = f"{self.action}".upper()

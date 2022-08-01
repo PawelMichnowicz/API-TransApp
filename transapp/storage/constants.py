@@ -12,6 +12,6 @@ WEEKDAYS = [
 
 
 class TimespanActionEnum(Enum):
-    SEND = 1
-    RECEIVE = 2
+    SEND = 'send'
+    RECEIVE = 'receive'
 
