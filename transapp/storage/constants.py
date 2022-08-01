@@ -11,7 +11,7 @@ WEEKDAYS = [
     (7, "Sunday"),]
 
 
-class TimespanAction(Enum):
+class TimespanActionEnum(Enum):
     SEND = 1
     RECEIVE = 2
 

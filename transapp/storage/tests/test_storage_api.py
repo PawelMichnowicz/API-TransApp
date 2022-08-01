@@ -12,7 +12,7 @@ from storage.models import Warehouse, Action
 from storage.serializers import WarehouserStatsSerializer, ActionSerializer
 
 from core.constants import WORK_POSITION
-from storage.constants import TimespanAction
+from storage.constants import TimespanActionEnum
 
 DEFAULT_USER_PARAMS = {
     'username': 'user_',
@@ -50,9 +50,9 @@ class TestPermissionDetailList(TestCase):
 
         self.warehouse = Warehouse.objects.create(**{'name': 'A'})
         self.send_action = Action.objects.create(
-            **{'warehouse': self.warehouse, 'action_type': TimespanAction.SEND})
+            **{'warehouse': self.warehouse, 'action_type': TimespanActionEnum.SEND})
         self.receive_action = Action.objects.create(
-            **{'warehouse': self.warehouse, 'action_type': TimespanAction.RECEIVE})
+            **{'warehouse': self.warehouse, 'action_type': TimespanActionEnum.RECEIVE})
 
     def test_list_action(self):
 
@@ -90,7 +90,7 @@ class TestModelsMethod(TestCase):
         self.worker2 = create_worker(
             **{'position': WORK_POSITION[1], 'workplace': self.warehouse})
         self.receive_action = Action.objects.create(
-            **{'warehouse': self.warehouse, 'duration': datetime.timedelta(seconds=(60*60)), 'action_type':TimespanAction.RECEIVE})
+            **{'warehouse': self.warehouse, 'duration': datetime.timedelta(seconds=(60*60)), 'action_type':TimespanActionEnum.RECEIVE})
         self.send_action = Action.objects.create(
             **{'warehouse': self.warehouse})
         self.receive_action.workers.add(self.worker1)

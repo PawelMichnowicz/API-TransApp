@@ -6,7 +6,7 @@ from django.dispatch import receiver
 
 import datetime
 
-from .constants import DEFAULT_TIME_OPEN, WEEKDAYS, TimespanAction
+from .constants import DEFAULT_TIME_OPEN, WEEKDAYS, TimespanActionEnum
 
 
 class Time(models.Model):
@@ -30,19 +30,15 @@ class OpenningTime(Time):
 class Timespan(Time):
 
     class TimespanAction(models.TextChoices):
-        SEND = TimespanAction.SEND.name.lower(), 'Send'
-        RECEIVE = TimespanAction.RECEIVE.name.lower(), 'Receive'
+        SEND = TimespanActionEnum.SEND.name.lower(), 'Send'
+        RECEIVE = TimespanActionEnum.RECEIVE.name.lower(), 'Receive'
 
     monthday = models.DateField()
-    action = models.CharField(max_length=25, choices=TimespanAction.choices)
+    action = models.CharField(max_length=255, choices=TimespanAction.choices)
 
     def __str__(self):
         action = f"{self.action}".upper()
         return f"{action} {self.monthday.strftime('%b%d')} {self.from_hour.strftime('%H:%M')}-{self.to_hour.strftime('%H:%M')}"
-
-    # def save(self, *args, **kwargs):
-    #     self.duration = self.from_hour - self.to_hour
-    #     super(Timespan, self).save(*args, **kwargs)
 
 
 class Warehouse(models.Model):
@@ -78,5 +74,5 @@ class Action(models.Model):
     warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE)
     id_offer = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     description = models.TextField(default='')
-    action_type = models.CharField(max_length=255, default=TimespanAction.SEND)
+    action_type = models.CharField(max_length=255, default=TimespanActionEnum.SEND)
 
