@@ -4,16 +4,17 @@ from rest_framework_simplejwt.views import TokenVerifyView
 
 
 from . import views
+from storage.views import WorkerDowngradeApi, WorkerUpdateApi
 
-
-
+app_name = 'core'
 
 urlpatterns = [
-    path('check/', views.TestApi.as_view()),
     path('register/', views.RegisterApi.as_view()),
-    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('token/auth/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('token/verify/', TokenVerifyView.as_view(), name='token_verify'),
+    path('worker-downgrade/<int:pk>/', WorkerDowngradeApi.as_view(), name='downgrade'),
+    path('worker-upgrade/<int:pk>/', WorkerUpdateApi.as_view({'post': 'update',}), name='upgrade'),
 ]
 
 

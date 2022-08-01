@@ -18,9 +18,3 @@ class RegisterApi(APIView):
         else:
             return Response({"Status": serializer.errors})
 
-
-class TestApi(APIView):
-
-    def get(self, request):
-        user = request.user
-        return Response({"username":user.username, "email":user.email, 'position':user.position, 'warehouse':user.workplace.pk})

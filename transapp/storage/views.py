@@ -1,10 +1,8 @@
-from django.shortcuts import render
 from django.contrib.auth import get_user_model
 
 from rest_framework import generics, mixins, viewsets
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.serializers import ValidationError
 
 from core.permissions import IsDirector, WorkHere
 from core.constants import WORK_POSITION

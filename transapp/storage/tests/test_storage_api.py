@@ -128,9 +128,9 @@ class TestModelsMethod(TestCase):
 
     def test_upgrade_worker(self):
 
-        res_usr = self.user_client.patch(reverse('storage:upgrade-detail', args=[self.user.pk]),
+        res_usr = self.user_client.post(reverse('core:upgrade', args=[self.user.pk]),
                                          {'email': 'example@com.pl', 'workplace': self.warehouse.pk})
-        res_dir = self.dir_client.patch(reverse('storage:upgrade-detail', args=[self.user.pk]),
+        res_dir = self.dir_client.post(reverse('core:upgrade', args=[self.user.pk]),
                                         {'email': 'example@com.pl', 'workplace': self.warehouse.pk})
         self.user.refresh_from_db()
 
@@ -144,9 +144,9 @@ class TestModelsMethod(TestCase):
     def test_downgrade_worker(self):
 
         res_usr = self.user_client.post(
-            reverse('storage:downgrade', args=[self.worker1.pk]))
+            reverse('core:downgrade', args=[self.worker1.pk]))
         res_dir = self.dir_client.post(
-            reverse('storage:downgrade', args=[self.worker1.pk]))
+            reverse('core:downgrade', args=[self.worker1.pk]))
         self.worker1.refresh_from_db()
 
         self.assertEqual(res_dir.status_code, 200)

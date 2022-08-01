@@ -1,8 +1,9 @@
 import uuid
 from django.db import models
+from django.dispatch import receiver
+from django.db.models import F, Q
 from django.contrib.auth import get_user_model
 from django.db.models.signals import post_save
-from django.dispatch import receiver
 
 import datetime
 
@@ -16,6 +17,29 @@ class Time(models.Model):
 
     class Meta:
         abstract = True
+        constraints = [
+            models.CheckConstraint(
+                check=Q(from_hour__lt=F('to_hour')),
+                name='%(class)s_check_hours'
+            )
+        ]
+
+
+class ActionChoice(models.TextChoices):
+        SEND = TimespanActionEnum.SEND.name.lower(), 'Send'
+        RECEIVE = TimespanActionEnum.RECEIVE.name.lower(), 'Receive'
+
+
+class Timespan(Time):
+
+    monthday = models.DateField()
+    action = models.CharField(max_length=255, choices=ActionChoice.choices)
+
+
+    def __str__(self):
+        action = f"{self.action}".upper()
+        return f"{action} {self.monthday.strftime('%b%d')} {self.from_hour.strftime('%H:%M')}-{self.to_hour.strftime('%H:%M')}"
+
 
 
 class OpenningTime(Time):
@@ -27,27 +51,12 @@ class OpenningTime(Time):
         return f"{self.get_weekday_display()} {self.from_hour.strftime('%H:%M')}-{self.to_hour.strftime('%H:%M')}"
 
 
-class Timespan(Time):
-
-    class TimespanAction(models.TextChoices):
-        SEND = TimespanActionEnum.SEND.name.lower(), 'Send'
-        RECEIVE = TimespanActionEnum.RECEIVE.name.lower(), 'Receive'
-
-    monthday = models.DateField()
-    action = models.CharField(max_length=255, choices=TimespanAction.choices)
-
-    def __str__(self):
-        action = f"{self.action}".upper()
-        return f"{action} {self.monthday.strftime('%b%d')} {self.from_hour.strftime('%H:%M')}-{self.to_hour.strftime('%H:%M')}"
-
-
 class Warehouse(models.Model):
 
     name = models.CharField(max_length=255, unique=True)
     openning_time = models.ManyToManyField(OpenningTime)
     action_available = models.ManyToManyField(
         Timespan, related_name='warehouse_action', blank=True)
-    description = models.TextField(default='')
     # workers
 
     def __str__(self):
@@ -73,6 +82,5 @@ class Action(models.Model):
         default=datetime.timedelta(seconds=(60*60)))
     warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE)
     id_offer = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    description = models.TextField(default='')
-    action_type = models.CharField(max_length=255, default=TimespanActionEnum.SEND)
+    action_type = models.CharField(max_length=255, choices=ActionChoice.choices)
 
