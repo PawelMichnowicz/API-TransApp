@@ -8,11 +8,11 @@ from rest_framework.test import APIClient
 
 import datetime
 
-from storage.models import Warehouse, Action
+from storage.models import Warehouse, Action, ActionChoice
 from storage.serializers import WarehouserStatsSerializer, ActionSerializer
 
-from core.constants import WORK_POSITION
-from storage.constants import TimespanActionEnum
+from core.models import WorkPosition
+
 
 DEFAULT_USER_PARAMS = {
     'username': 'user_',
@@ -46,13 +46,13 @@ class TestPermissionDetailList(TestCase):
     def setUp(self):
 
         self.user_client = create_client()
-        self.dir_client = create_client(**{'position': WORK_POSITION[2]})
+        self.dir_client = create_client(**{'position':WorkPosition.DIRECTOR.value})
 
         self.warehouse = Warehouse.objects.create(**{'name': 'A'})
         self.send_action = Action.objects.create(
-            **{'warehouse': self.warehouse, 'action_type': TimespanActionEnum.SEND})
+            **{'warehouse': self.warehouse, 'action_type': ActionChoice.SEND})
         self.receive_action = Action.objects.create(
-            **{'warehouse': self.warehouse, 'action_type': TimespanActionEnum.RECEIVE})
+            **{'warehouse': self.warehouse, 'action_type': ActionChoice.RECEIVE})
 
     def test_list_action(self):
 
@@ -86,11 +86,11 @@ class TestModelsMethod(TestCase):
         self.warehouse = Warehouse.objects.create(**{'name': 'A'})
         self.user = create_worker()
         self.worker1 = create_worker(
-            **{'position': WORK_POSITION[1], 'workplace': self.warehouse})
+            **{'position': WorkPosition.WAREHOUSER.value, 'workplace': self.warehouse})
         self.worker2 = create_worker(
-            **{'position': WORK_POSITION[1], 'workplace': self.warehouse})
+            **{'position': WorkPosition.WAREHOUSER.value, 'workplace': self.warehouse})
         self.receive_action = Action.objects.create(
-            **{'warehouse': self.warehouse, 'duration': datetime.timedelta(seconds=(60*60)), 'action_type':TimespanActionEnum.RECEIVE})
+            **{'warehouse': self.warehouse, 'duration': datetime.timedelta(seconds=(60*60)), 'action_type':ActionChoice.RECEIVE})
         self.send_action = Action.objects.create(
             **{'warehouse': self.warehouse})
         self.receive_action.workers.add(self.worker1)
@@ -98,8 +98,8 @@ class TestModelsMethod(TestCase):
         self.send_action.workers.add(self.worker1)
 
         self.dir_client = create_client(
-            **{'position': WORK_POSITION[2], 'workplace': self.warehouse})
-        self.dir_client2 = create_client(**{'position': WORK_POSITION[2], })
+            **{'position': WorkPosition.DIRECTOR.value, 'workplace': self.warehouse})
+        self.dir_client2 = create_client(**{'position': WorkPosition.DIRECTOR.value, })
         self.user_client = create_client()
 
     def test_time_worker(self):
@@ -119,7 +119,7 @@ class TestModelsMethod(TestCase):
                 case self.worker2.username:
                     self.assertEqual(sum_time, self.receive_action.duration)
 
-        workers = get_user_model().objects.filter(position=WORK_POSITION[1]).all()
+        workers = get_user_model().objects.filter(position=WorkPosition.WAREHOUSER.value).all()
         serializer = WarehouserStatsSerializer(workers, many=True)
         self.assertEqual(res_dir.data, serializer.data)
 
@@ -137,7 +137,7 @@ class TestModelsMethod(TestCase):
         self.assertEqual(res_dir.status_code, 200)
         self.assertEqual(res_usr.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(self.user.email, 'example@com.pl')
-        self.assertEqual(self.user.position, WORK_POSITION[1])
+        self.assertEqual(self.user.position, WorkPosition.WAREHOUSER.value)
         self.assertEqual(
             self.user, self.warehouse.workers.get(id=self.user.pk))
 
@@ -153,7 +153,7 @@ class TestModelsMethod(TestCase):
         self.assertEqual(res_usr.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(self.worker1.email, None)
         self.assertEqual(self.worker1.workplace, None)
-        self.assertEqual(self.worker1.position, WORK_POSITION[0])
+        self.assertEqual(self.worker1.position, WorkPosition.USER.value)
 
     def test_add_timespan(self):
 

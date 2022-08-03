@@ -7,9 +7,10 @@ from rest_framework.permissions import AllowAny
 
 from storage.serializers import WarehouseWorkerSerializer
 
+from .models import WorkPosition
 from .permissions import IsDirector
-from .constants import WORK_POSITION
 from .serializers import UserSerializer
+
 
 class RegisterApi(APIView):
     permission_classes = [AllowAny]
@@ -23,17 +24,16 @@ class RegisterApi(APIView):
             return Response({"Status": serializer.errors})
 
 
-
 class WorkerDowngradeApi(generics.GenericAPIView):
 
-    queryset = get_user_model().objects.filter(position=WORK_POSITION[1]).all()
+    queryset = get_user_model().objects.filter(position=WorkPosition.WAREHOUSER.value).all()
     permission_classes = [IsDirector, ]
 
     def post(self, request, pk, format=None):
         user = self.get_object()
         user.email = None
         user.workplace = None
-        user.position = WORK_POSITION[0]
+        user.position = WorkPosition.USER.value
         user.save()
         return Response({'username': user.username, 'position': user.position, 'workplace': user.workplace})
 
@@ -42,14 +42,14 @@ class WorkerDowngradeApi(generics.GenericAPIView):
 class WorkerUpdateApi(mixins.UpdateModelMixin,
                       viewsets.GenericViewSet):
 
-    queryset = get_user_model().objects.filter(position=WORK_POSITION[0]).all()
+    queryset = get_user_model().objects.filter(position=WorkPosition.USER.value).all()
     permission_classes = [IsDirector, ]
     serializer_class = WarehouseWorkerSerializer
 
     def update(self, request, *args, **kwargs):
 
         instance = self.get_object()
-        instance.position = WORK_POSITION[1]
+        instance.position = WorkPosition.WAREHOUSER.value
         serializer = self.get_serializer(
             instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)

@@ -1,6 +1,8 @@
 from django.db import models
 import uuid
 
+from storage.models import ActionChoice
+
 # Create your models here.
 
 class Vehicle(models.Model):

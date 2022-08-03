@@ -1,1 +1,0 @@
-WORK_POSITION = ['USR', 'WHR', 'DIR']

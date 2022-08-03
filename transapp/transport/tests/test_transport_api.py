@@ -4,7 +4,7 @@ from django.urls import reverse
 
 from rest_framework import status
 from rest_framework.test import APIClient
-from core.constants import WORK_POSITION
+from core.models import WorkPosition
 
 from transport.models import Route, Vehicle, Offer
 from transport.serializers import RouteSerializer, VehicleSerializer, OfferSerializer,\
@@ -24,12 +24,12 @@ class TestModels(TestCase):
     def setUp(self):
 
         self.user = get_user_model().objects.create_user(
-            username='user', password='123', position=WORK_POSITION[0])
+            username='user', password='123', position=WorkPosition.USER.value)
         self.user_client = APIClient()
         self.user_client.force_authenticate(self.user)
 
         self.director = get_user_model().objects.create_user(
-            username='dire', password='123', position=WORK_POSITION[2])
+            username='dire', password='123', position=WorkPosition.DIRECTOR.value)
         self.director_client = APIClient()
         self.director_client.force_authenticate(self.director)
 

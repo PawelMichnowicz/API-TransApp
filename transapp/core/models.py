@@ -5,8 +5,13 @@ from django.contrib.auth.models import (
     PermissionsMixin,
 )
 
-from .constants import WORK_POSITION
 from storage.models import Warehouse
+
+
+class WorkPosition(models.TextChoices):
+    USER = 'USR', 'User'
+    WAREHOUSER = 'WHR', 'Warehouser'
+    DIRECTOR = 'DIR', 'Director'
 
 
 class UserManager(BaseUserManager):
@@ -29,13 +34,6 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-
-
-    class WorkPosition(models.TextChoices):
-        USER = WORK_POSITION[0], 'User'
-        WAREHOUSER = WORK_POSITION[1], 'Warehouser'
-        DIRECTOR = WORK_POSITION[2], 'Director'
-
 
     username = models.CharField(max_length=25, unique=True)
     email = models.EmailField(max_length=255, blank=True, null=True, default=None)

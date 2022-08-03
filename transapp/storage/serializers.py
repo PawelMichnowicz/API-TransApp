@@ -1,8 +1,11 @@
+import json
+
 from rest_framework import serializers
+from rest_framework.utils import model_meta
 
 from django.contrib.auth import get_user_model
 
-from .models import Timespan, Warehouse, Action
+from .models import OpenningTime, Timespan, Warehouse, Action
 
 
 class TimespanSerializer(serializers.ModelSerializer):
@@ -10,7 +13,6 @@ class TimespanSerializer(serializers.ModelSerializer):
     class Meta:
         model = Timespan
         fields = ['monthday', 'from_hour', 'to_hour', 'action']
-
 
 
 class WarehouseWorkerSerializer(serializers.ModelSerializer):
@@ -47,18 +49,56 @@ class WarehouserStatsSerializer(serializers.ModelSerializer):
         fields = ['username', 'stats']
 
 
+class OpenningTimeSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = OpenningTime
+        fields = ['weekday', 'from_hour', 'to_hour']
+
 class WarehouseSerializer(serializers.ModelSerializer):
+    openning_time = OpenningTimeSerializer(many=True, read_only=True)
 
     class Meta:
         model = Warehouse
         fields = ['pk', 'name', 'action_available', 'openning_time', 'workers']
 
     def validate(self, attrs):
-        list_of_days = [item.weekday for item in attrs['openning_time']]
-        if not (len(set(list_of_days)) == len(list_of_days)):
-            raise serializers.ValidationError('You have to provided only one timespan per day')
+
+        list_of_days = []
+        if 'openning_time' in self.initial_data:
+            openning_data = self.initial_data['openning_time']
+            attrs['openning_time'] = []
+            for openning_day in openning_data:
+                openning_serializer = OpenningTimeSerializer(data=openning_day)
+                if not openning_serializer.is_valid():
+                    raise serializers.ValidationError(openning_serializer.errors)
+                attrs['openning_time'].append(openning_serializer.data)
+
+                list_of_days.append(openning_serializer.data['weekday'])
+            if not (len(set(list_of_days)) == len(list_of_days)):
+                raise serializers.ValidationError('You have to provided only one timespan per day')
+
         return super().validate(attrs)
 
+
+    def update(self, instance, validated_data, **args):
+        # sprobuje perform update  
+        openning_time = validated_data['openning_time']
+        instance.openning_time.clear()
+        for openning_day in openning_time:
+            day_obj = OpenningTime.objects.filter(
+                weekday=openning_day['weekday'],
+                from_hour=openning_day['from_hour'],
+                to_hour=openning_day['to_hour'],
+                ).first()
+            if not day_obj:
+                serializer = OpenningTimeSerializer(data=openning_day)
+                serializer.is_valid(raise_exception=True)
+                day_obj = serializer.save()
+            instance.openning_time.add(day_obj)
+        instance.save()
+
+        return instance
 
 class ActionSerializer(serializers.ModelSerializer):
 

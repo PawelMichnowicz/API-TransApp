@@ -10,8 +10,3 @@ WEEKDAYS = [
     (6, "Saturday"),
     (7, "Sunday"),]
 
-
-class TimespanActionEnum(Enum):
-    SEND = 'send'
-    RECEIVE = 'receive'
-

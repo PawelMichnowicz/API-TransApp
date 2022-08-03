@@ -1,13 +1,17 @@
 import uuid
+import datetime
 from django.db import models
 from django.dispatch import receiver
 from django.db.models import F, Q
 from django.contrib.auth import get_user_model
 from django.db.models.signals import post_save
 
-import datetime
 
-from .constants import DEFAULT_TIME_OPEN, WEEKDAYS, TimespanActionEnum
+from .constants import DEFAULT_TIME_OPEN, WEEKDAYS
+
+class ActionChoice(models.TextChoices):
+    SEND = 'send' , 'Send'
+    RECEIVE = 'receive', 'Receive'
 
 
 class Time(models.Model):
@@ -23,12 +27,6 @@ class Time(models.Model):
                 name='%(class)s_check_hours'
             )
         ]
-
-
-class ActionChoice(models.TextChoices):
-    SEND = TimespanActionEnum.SEND.value, 'Send'
-    RECEIVE = TimespanActionEnum.RECEIVE.value, 'Receive'
-
 
 class Timespan(Time):
 
@@ -46,8 +44,8 @@ class OpenningTime(Time):
     weekday = models.IntegerField(
         choices=WEEKDAYS)
 
-    def __str__(self):
-        return f"{self.get_weekday_display()} {self.from_hour.strftime('%H:%M')}-{self.to_hour.strftime('%H:%M')}"
+    # def __str__(self):
+    #     return f"{self.get_weekday_display()} {self.from_hour.strftime('%H:%M')}-{self.to_hour.strftime('%H:%M')}"
 
 
 class Warehouse(models.Model):
@@ -56,7 +54,6 @@ class Warehouse(models.Model):
     openning_time = models.ManyToManyField(OpenningTime)
     action_available = models.ManyToManyField(
         Timespan, related_name='warehouse_action', blank=True)
-    # workers
 
     def __str__(self):
         return self.name
