@@ -1,14 +1,16 @@
-import json
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
+
 from django.contrib.auth import get_user_model
 
 from rest_framework import generics, mixins, viewsets, serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from core.permissions import IsDirector, WorkHere
+from core.permissions import IsDirector, IsAdmin, WorkHere
 from core.models import WorkPosition
 
-from .models import Warehouse, Action, Timespan
+from .models import OpenningTime, Warehouse, Action, Timespan
 from .serializers import OpenningTimeSerializer, WarehouseSerializer, ActionSerializer, TimespanSerializer
 from .serializers import WarehouseSerializer, WarehouserStatsSerializer, WarehouseWorkerSerializer
 
@@ -32,37 +34,6 @@ class AddTimespanApi(generics.GenericAPIView):
         return Response({'warehouse_id': instance.pk, f'action_timespan': serializer.data})
 
 
-class WorkerDowngradeApi(generics.GenericAPIView):
-
-    queryset = get_user_model().objects.filter(position=WorkPosition.WAREHOUSER.value).all()
-    permission_classes = [IsDirector, ]
-
-    def post(self, request, pk, format=None):
-        user = self.get_object()
-        user.email = None
-        user.workplace = None
-        user.position = WorkPosition.USER.value
-        user.save()
-        return Response({'username': user.username, 'position': user.position, 'workplace': user.workplace})
-
-
-class WorkerUpdateApi(mixins.UpdateModelMixin,
-                      viewsets.GenericViewSet):
-
-    queryset = get_user_model().objects.filter(position=WorkPosition.USER.value).all()
-    permission_classes = [IsDirector, ]
-    serializer_class = WarehouseWorkerSerializer
-
-    def update(self, request, *args, **kwargs):
-
-        instance = self.get_object()
-        instance.position = WorkPosition.WAREHOUSER.value
-        serializer = self.get_serializer(
-            instance, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
-        return Response(serializer.data)
-
 
 class WorkersStatsApi(mixins.ListModelMixin,
                       viewsets.GenericViewSet):
@@ -72,36 +43,63 @@ class WorkersStatsApi(mixins.ListModelMixin,
     serializer_class = WarehouserStatsSerializer
 
 
-class WarehouseApi(mixins.RetrieveModelMixin,
+class WarehouseApi(mixins.CreateModelMixin,
+                   mixins.RetrieveModelMixin,
                    mixins.UpdateModelMixin,
                    mixins.ListModelMixin,
+                   mixins.DestroyModelMixin,
                    viewsets.GenericViewSet):
 
     queryset = Warehouse.objects.all()
     serializer_class = WarehouseSerializer
-    permission_classes = [IsAuthenticated, ]
+    permission_classes = [IsAdmin, ]
 
-    def get_permissions(self):
-        if self.action in ['partial_update', 'update']:
-            return [IsAuthenticated(), IsDirector(), WorkHere()]
-        return super().get_permissions()
+    def perform_openning_time(self, instance):
+        ''' Helper function to handle nested serializer during update and create'''
+        openning_time = self.request.data['openning_time']
+        for openning_day in openning_time:
+            day_obj = OpenningTime.objects.filter(
+                weekday=openning_day['weekday'],
+                from_hour=openning_day['from_hour'],
+                to_hour=openning_day['to_hour'],
+                ).first()
+            if not day_obj:
+                serializer = OpenningTimeSerializer(data=openning_day)
+                serializer.is_valid(raise_exception=True)
+                day_obj = serializer.save()
+            instance.openning_time.add(day_obj)
+
+    def perform_action_available(self, instance):
+        ''' Helper function to handle nested serializer during update and create'''
+        action_available = self.request.data['action_available']
+        for action_time in action_available:
+            serializer = TimespanSerializer(data=action_time)
+            serializer.is_valid(raise_exception=True)
+            action_time_obj = serializer.save()
+            instance.action_available.add(action_time_obj)
 
 
+    def perform_create(self, serializer):
+        ''' Add oppening time and action available data during create instance'''
+        instance = serializer.save()
+        if 'openning_time' in self.request.data:
+            self.perform_openning_time(instance)
+        if 'action_available' in self.request.data:
+            self.perform_action_available(instance)
+        instance.save()
 
+    def perform_update(self, serializer):
+        ''' Add oppening time and action available data during update instance'''
+        instance = serializer.save()
+        if self.action =='update':
+            instance.action_available.clear()
+            instance.openning_time.clear()
 
-
-
-    # def update(self, request, *args, **kwargs):
-    #     instance = self.get_object()
-    #     serializer = self.get_serializer(instance, data=request.data, partial=True)
-    #     serializer.is_valid(raise_exception=True)
-    #     serializer.save()
-    #     raise serializers.ValidationError(serializer.validated_data)
-    #     # openning_data = json.loads(request.data['openning_time'])
-    #     serializer_opne = OpenningTimeSerializer(data=request.data, partial=True)
-    #     serializer_opne.is_valid(raise_exception=True)
-    #     return super().update(request, *args, **kwargs)
-
+        if 'openning_time' in self.request.data:
+            self.perform_openning_time(instance)
+        if 'action_available' in self.request.data:
+            self.perform_action_available(instance)
+        instance.save()
 
 class ActionApi(mixins.RetrieveModelMixin,
                 mixins.ListModelMixin,
@@ -110,3 +108,4 @@ class ActionApi(mixins.RetrieveModelMixin,
     queryset = Action.objects.all()
     serializer_class = ActionSerializer
     permission_classes = [IsDirector, ]
+

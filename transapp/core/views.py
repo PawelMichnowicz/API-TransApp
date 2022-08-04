@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 
-from rest_framework import generics, mixins, viewsets
+from rest_framework import generics, mixins, viewsets, serializers
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
@@ -26,8 +26,12 @@ class RegisterApi(APIView):
 
 class WorkerDowngradeApi(generics.GenericAPIView):
 
+    class EmptySerializer(serializers.Serializer):
+        pass
+
     queryset = get_user_model().objects.filter(position=WorkPosition.WAREHOUSER.value).all()
     permission_classes = [IsDirector, ]
+    serializer_class = EmptySerializer
 
     def post(self, request, pk, format=None):
         user = self.get_object()

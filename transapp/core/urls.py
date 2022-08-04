@@ -3,8 +3,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.views import TokenVerifyView
 
 
-from .views import RegisterApi, WorkerDowngradeApi
-from storage.views import WorkerUpdateApi
+from .views import RegisterApi, WorkerDowngradeApi, WorkerUpdateApi
 
 app_name = 'core'
 

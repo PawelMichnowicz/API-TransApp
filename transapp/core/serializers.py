@@ -16,8 +16,10 @@ class UserSerializer(serializers.ModelSerializer):
     def validate(self, data):
         if data['password'] != data['password2']:
             raise serializers.ValidationError("Hasła nie są identyczne")
-        if get_user_model().objects.filter(email=data['email']).exists():
+        if 'email' in data and get_user_model().objects.filter(email=data['email']).exists():
             raise serializers.ValidationError("Email zajęty")
+        if not 'email' in data :
+            data['email'] = None
         return data
 
     def create(self, validated_data):

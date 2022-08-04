@@ -1,5 +1,3 @@
-from enum import Enum
-
 DEFAULT_TIME_OPEN = [(8, 16), (8, 16), (8, 16), (8, 16), (8, 16)]
 WEEKDAYS = [
     (1, "Monday"),

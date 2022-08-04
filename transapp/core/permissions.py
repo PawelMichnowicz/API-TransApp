@@ -4,7 +4,13 @@ from core.models import WorkPosition
 class IsDirector(BasePermission):
 
     def has_permission(self, request, view):
-        return request.user.position == WorkPosition.DIRECTOR.value
+        return request.user.position == WorkPosition.DIRECTOR.value or request.user.position == WorkPosition.ADMIN.value
+
+
+class IsAdmin(BasePermission):
+
+    def has_permission(self, request, view):
+        return request.user.position == WorkPosition.ADMIN.value
 
 
 class WorkHere(BasePermission):
