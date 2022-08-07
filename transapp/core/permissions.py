@@ -13,6 +13,12 @@ class IsAdmin(BasePermission):
         return request.user.position == WorkPosition.ADMIN.value
 
 
+class IsCoordinator(BasePermission):
+
+    def has_permission(self, request, view):
+        return request.user.position == WorkPosition.COORDINATOR.value
+
+
 class WorkHere(BasePermission):
 
     def has_object_permission(self, request, view, obj):

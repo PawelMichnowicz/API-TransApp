@@ -1,19 +1,16 @@
-from drf_yasg.utils import swagger_auto_schema
-from drf_yasg import openapi
-
 from django.contrib.auth import get_user_model
 
 from rest_framework import generics, mixins, viewsets, serializers
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from core.permissions import IsDirector, IsAdmin, WorkHere
+from core.permissions import IsDirector, IsAdmin, WorkHere, IsCoordinator
 from core.models import WorkPosition
 
-from .models import OpenningTime, Warehouse, Action, Timespan
-from .serializers import OpenningTimeSerializer, WarehouseSerializer, ActionSerializer, TimespanSerializer
-from .serializers import WarehouseSerializer, WarehouserStatsSerializer, WarehouseWorkerSerializer
 
+from storage.models import OpenningTime, Warehouse, Action, Timespan
+from storage.serializers import ActiopnOrderSerializer, OpenningTimeSerializer, WarehouseSerializer, ActionSerializer, TimespanSerializer
+from storage.serializers import WarehouseSerializer, WarehouserStatsSerializer, WarehouseWorkerSerializer
+from storage.constants import StatusChoice
 
 class AddTimespanApi(generics.GenericAPIView):
 
@@ -28,7 +25,7 @@ class AddTimespanApi(generics.GenericAPIView):
         timespan = serializer.save()
 
         instance = self.get_object()
-        instance.action_available.add(timespan)
+        instance.timespan_available.add(timespan)
         instance.save()
 
         return Response({'warehouse_id': instance.pk, f'action_timespan': serializer.data})
@@ -69,14 +66,14 @@ class WarehouseApi(mixins.CreateModelMixin,
                 day_obj = serializer.save()
             instance.openning_time.add(day_obj)
 
-    def perform_action_available(self, instance):
+    def perform_timespan_available(self, instance):
         ''' Helper function to handle nested serializer during update and create'''
-        action_available = self.request.data['action_available']
-        for action_time in action_available:
+        timespan_available = self.request.data['timespan_available']
+        for action_time in timespan_available:
             serializer = TimespanSerializer(data=action_time)
             serializer.is_valid(raise_exception=True)
             action_time_obj = serializer.save()
-            instance.action_available.add(action_time_obj)
+            instance.timespan_available.add(action_time_obj)
 
 
     def perform_create(self, serializer):
@@ -84,22 +81,21 @@ class WarehouseApi(mixins.CreateModelMixin,
         instance = serializer.save()
         if 'openning_time' in self.request.data:
             self.perform_openning_time(instance)
-        if 'action_available' in self.request.data:
-            self.perform_action_available(instance)
+        if 'timespan_available' in self.request.data:
+            self.perform_timespan_available(instance)
         instance.save()
 
     def perform_update(self, serializer):
         ''' Add oppening time and action available data during update instance'''
         instance = serializer.save()
-        if self.action =='update':
-            instance.action_available.clear()
-            instance.openning_time.clear()
-
         if 'openning_time' in self.request.data:
+            instance.openning_time.clear()
             self.perform_openning_time(instance)
-        if 'action_available' in self.request.data:
-            self.perform_action_available(instance)
+        if 'timespan_available' in self.request.data:
+            instance.timespan_available.clear()
+            self.perform_timespan_available(instance)
         instance.save()
+
 
 class ActionApi(mixins.RetrieveModelMixin,
                 mixins.ListModelMixin,
@@ -107,5 +103,47 @@ class ActionApi(mixins.RetrieveModelMixin,
 
     queryset = Action.objects.all()
     serializer_class = ActionSerializer
-    permission_classes = [IsDirector, ]
+    permission_classes = [IsCoordinator, ]
 
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset, many=True)
+        data = {}
+        for item in serializer.data:
+            status = item.pop('status')
+            if status in data:
+                data[status].append(item)
+            else:
+                data[status] = [item]
+        return Response(data)
+
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            return ActiopnOrderSerializer
+        return self.serializer_class
+
+
+class AcceptAction(generics.GenericAPIView):
+
+    queryset = Action.objects.filter(status=StatusChoice.IN_PROGRESS)
+    permission_classes = [IsCoordinator]
+    serializer_class = ActionSerializer
+
+    def post(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.status = StatusChoice.DELIVERED
+        instance.save()
+        return Response(self.get_serializer(instance=instance).data)
+
+
+class AcceptBrokenAction(generics.GenericAPIView):
+
+    queryset = Action.objects.filter(status=StatusChoice.IN_PROGRESS)
+    permission_classes = [IsCoordinator]
+    serializer_class = ActionSerializer
+
+    def post(self, request, *args, **kwargs):
+        instance = self.get_object()
+        buyer_email = instance.transport.orders.values_list().filter(buyer_email='miseczkag@gmail.com')
+        instance.status = StatusChoice.DELIVERED_BROKEN
+        return Response(self.get_serializer(instance=instance).data)

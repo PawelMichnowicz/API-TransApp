@@ -58,4 +58,7 @@ class WorkerUpdateApi(mixins.UpdateModelMixin,
             instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
-        return Response(serializer.data)
+        return Response({'username': instance.username, 'email':instance.email, 'position': instance.position, 'workplace': instance.workplace.pk})
+
+
+

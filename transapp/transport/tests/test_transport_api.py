@@ -6,13 +6,13 @@ from rest_framework import status
 from rest_framework.test import APIClient
 from core.models import WorkPosition
 
-from transport.models import Route, Vehicle, Offer
-from transport.serializers import RouteSerializer, VehicleSerializer, OfferSerializer,\
-    RouteSerializer, VehicleSerializer, OfferSerializer
+from transport.models import Route, Vehicle, Transport
+from transport.serializers import RouteSerializer, VehicleSerializer, TransportSerializer,\
+    RouteSerializer, VehicleSerializer
 
 ROUTE_URL_LIST = reverse('transport:route-list')
 VEHICLE_URL = reverse('transport:vehicle-list')
-OFFER_URL = reverse('transport:offer-list')
+TRANSPORT_URL = reverse('transport:transport-list')
 
 
 def get_detail_url(model, id):
@@ -41,7 +41,7 @@ class TestModels(TestCase):
             **{'registration': 'RKR 204A', 'capacity': 100, 'is_refrigerate': True})
         self.vehicle = Vehicle.objects.create(
             **{'registration': 'RKR 113C', 'capacity': 200, 'is_refrigerate': False})
-        self.offer = Offer.objects.create(
+        self.transport = Transport.objects.create(
             **{'route': self.route, 'need_refrigerate': True})
 
     def test_list_routes(self):
@@ -91,25 +91,26 @@ class TestModels(TestCase):
         serializer = VehicleSerializer(vehicle)
         self.assertEqual(res_dir.data, serializer.data)
 
-    def test_list_offers(self):
+    def test_list_transports(self):
 
-        res_dir = self.director_client.get(OFFER_URL)
-        res_usr = self.user_client.get(OFFER_URL)
+        res_dir = self.director_client.get(TRANSPORT_URL)
+        res_usr = self.user_client.get(TRANSPORT_URL)
         self.assertEqual(res_dir.status_code, status.HTTP_200_OK)
         self.assertEqual(res_usr.status_code, status.HTTP_403_FORBIDDEN)
 
-        offers = Offer.objects.all()
-        serializer = OfferSerializer(offers, many=True)
+        transports = Transport.objects.all()
+        serializer = TransportSerializer(transports, many=True)
         self.assertEqual(res_dir.data, serializer.data)
 
-    def test_detail_offer(self):
+    def test_detail_transport(self):
 
         res_dir = self.director_client.get(
-            get_detail_url(Offer, self.offer.pk))
-        res_usr = self.user_client.get(get_detail_url(Offer, self.offer.pk))
+            get_detail_url(Transport, self.transport.pk))
+        res_usr = self.user_client.get(
+            get_detail_url(Transport, self.transport.pk))
         self.assertEqual(res_dir.status_code, status.HTTP_200_OK)
         self.assertEqual(res_usr.status_code, status.HTTP_403_FORBIDDEN)
 
-        offer = Offer.objects.get(pk=self.offer.pk)
-        serializer = OfferSerializer(offer)
+        transport = Transport.objects.get(pk=self.transport.pk)
+        serializer = TransportSerializer(transport)
         self.assertEqual(res_dir.data, serializer.data)

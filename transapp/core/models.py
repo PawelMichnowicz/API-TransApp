@@ -13,6 +13,7 @@ class WorkPosition(models.TextChoices):
     WAREHOUSER = 'WHR', 'Warehouser'
     DIRECTOR = 'DIR', 'Director'
     ADMIN = 'ADM', 'Admin'
+    COORDINATOR = 'COR', 'Coordinator'
 
 
 class UserManager(BaseUserManager):

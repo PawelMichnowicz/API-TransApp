@@ -1,13 +1,12 @@
 from rest_framework import serializers
-from .models import Route, Offer, Vehicle
+from .models import Route, Transport, Vehicle, Order
 
 
 class VehicleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Vehicle
-        fields = ['pk', 'registration', 'capacity',
-                  'is_available', 'is_refrigerate']
+        fields = ['pk', 'registration', 'capacity', 'is_available', 'is_refrigerate']
 
 
 class RouteSerializer(serializers.ModelSerializer):
@@ -17,8 +16,14 @@ class RouteSerializer(serializers.ModelSerializer):
         fields = ['pk', 'origin', 'destination']
 
 
-class OfferSerializer(serializers.ModelSerializer):
+class TransportSerializer(serializers.ModelSerializer):
 
     class Meta:
-        model = Offer
-        fields = ['pk', 'id_offer', 'route', 'need_refrigerate']
+        model = Transport
+        fields = ['route', 'need_refrigerate', 'orders']
+
+class OrderSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Order
+        fields = ['buyer', 'price', 'products']

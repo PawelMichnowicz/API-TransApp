@@ -2,6 +2,8 @@ from rest_framework import serializers
 
 from django.contrib.auth import get_user_model
 
+from transport.serializers import TransportSerializer, OrderSerializer
+
 from .models import OpenningTime, Timespan, Warehouse, Action
 
 
@@ -9,7 +11,7 @@ class TimespanSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Timespan
-        fields = ['monthday', 'from_hour', 'to_hour', 'action']
+        fields = ['monthday', 'from_hour', 'to_hour', 'action_type']
 
 
 class WarehouseWorkerSerializer(serializers.ModelSerializer):
@@ -19,6 +21,10 @@ class WarehouseWorkerSerializer(serializers.ModelSerializer):
         fields = ['email', 'workplace']
 
     def validate(self, attrs):
+
+        if not 'email' in attrs or not 'workplace' in attrs:
+            raise serializers.ValidationError('You have to provide email and workplace')
+
         if get_user_model().objects.filter(email=attrs['email']).exists():
             raise serializers.ValidationError('Email is already in use')
 
@@ -29,16 +35,10 @@ class WarehouserStatsSerializer(serializers.ModelSerializer):
     stats = serializers.SerializerMethodField('calculate_stats')
 
     def calculate_stats(self, obj):
-        {
-            "president": {
-                "name": "Zaphod Beeblebrox",
-                "species": "Betelgeusian"
-            }
-        }
         stats = []
         for action in obj.action_set.values():
-            stats.append({'id_offer': action['id_offer'],
-                        'action': action['action_type'], 'duration': action['duration']})
+            stats.append({
+                        'action': action['action_type'], 'status': action['status'], 'duration': action['duration']})
         return stats
 
     class Meta:
@@ -53,41 +53,58 @@ class OpenningTimeSerializer(serializers.ModelSerializer):
         fields = ['weekday', 'from_hour', 'to_hour']
 
 
-class ActionSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = Action
-        fields = ['id_offer', 'action_type', 'workers', 'duration', 'warehouse' ]
-
-
 class WarehouseSerializer(serializers.ModelSerializer):
     openning_time = OpenningTimeSerializer(many=True)
-    action_available = TimespanSerializer(many=True, required=False)
+    timespan_available = TimespanSerializer(many=True, required=False)
 
     class Meta:
         model = Warehouse
-        fields = ['pk', 'name', 'action_available', 'openning_time', 'workers']
+        fields = ['pk', 'name', 'timespan_available', 'openning_time', 'workers']
 
     def validate(self, attrs):
         list_of_days = []
-        openning_data = self.initial_data['openning_time']
-        for openning_day in openning_data:
-            openning_serializer = OpenningTimeSerializer(data=openning_day)
-            openning_serializer.is_valid(raise_exception=True)
-            list_of_days.append(openning_serializer.data['weekday'])
-        if not (len(set(list_of_days)) == len(list_of_days)):
-            raise serializers.ValidationError('You have to provided only one timespan per day')
+        if 'openning_time' in self.initial_data:
+            openning_data = self.initial_data['openning_time']
+            for openning_day in openning_data:
+                openning_serializer = OpenningTimeSerializer(data=openning_day)
+                openning_serializer.is_valid(raise_exception=True)
+                list_of_days.append(openning_serializer.data['weekday'])
+            if not (len(set(list_of_days)) == len(list_of_days)):
+                raise serializers.ValidationError('You have to provided only one timespan per day')
         return super().validate(attrs)
 
     def update(self, instance, validated_data):
         validated_data.pop('openning_time', None)
-        validated_data.pop('action_available', None)
+        validated_data.pop('timespan_available', None)
         return super().update(instance, validated_data)
 
     def create(self, validated_data):
         validated_data.pop('openning_time', None)
-        validated_data.pop('action_available', None)
+        validated_data.pop('timespan_available', None)
         return super().create(validated_data)
+
+
+class ActionSerializer(serializers.ModelSerializer):
+    transport = TransportSerializer(read_only=True)
+
+    class Meta:
+        model = Action
+        fields = ['status', 'transport', 'action_type', 'workers', 'duration', 'warehouse']
+
+
+class ActiopnOrderSerializer(serializers.ModelSerializer):
+    orders = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Action
+        fields = ['pk', 'orders']
+
+    def get_orders(self, obj):
+        orders_queryset = obj.transport.orders
+        serializer = OrderSerializer(orders_queryset, many=True)
+        return serializer.data
+
+
 
 
 
