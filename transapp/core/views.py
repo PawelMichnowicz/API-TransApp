@@ -1,15 +1,17 @@
 from django.contrib.auth import get_user_model
+from django.http import HttpResponse
 
 from rest_framework import generics, mixins, viewsets, serializers
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
+from rest_framework import status
 
 from storage.serializers import WarehouseWorkerSerializer
 
-from .models import WorkPosition
+from .models import WorkPosition, Document
 from .permissions import IsDirector
-from .serializers import UserSerializer
+from .serializers import UserSerializer, DocumentSerializer
 
 
 class RegisterApi(APIView):
@@ -24,6 +26,15 @@ class RegisterApi(APIView):
             return Response({"Status": serializer.errors})
 
 
+class DocumentsAPI(mixins.ListModelMixin,
+                   viewsets.GenericViewSet):
+
+    queryset = Document.objects.all()
+    permission_classes = [AllowAny, ]
+    serializer_class = DocumentSerializer
+
+
+
 class WorkerDowngradeApi(generics.GenericAPIView):
 
     class EmptySerializer(serializers.Serializer):
@@ -35,30 +46,37 @@ class WorkerDowngradeApi(generics.GenericAPIView):
 
     def post(self, request, pk, format=None):
         user = self.get_object()
-        user.email = None
         user.workplace = None
-        user.position = WorkPosition.USER.value
+        # user.email = None
+        # user.position = WorkPosition.USER.value
         user.save()
         return Response({'username': user.username, 'position': user.position, 'workplace': user.workplace})
 
 
-
-class WorkerUpdateApi(mixins.UpdateModelMixin,
+class WorkereCreateApi(mixins.CreateModelMixin,
                       viewsets.GenericViewSet):
 
-    queryset = get_user_model().objects.filter(position=WorkPosition.USER.value).all()
+    queryset = get_user_model()
     permission_classes = [IsDirector, ]
-    serializer_class = WarehouseWorkerSerializer
+    serializer_class = UserSerializer
 
-    def update(self, request, *args, **kwargs):
+    def create(self, request, *args, **kwargs):
 
-        instance = self.get_object()
-        instance.position = WorkPosition.WAREHOUSER.value
-        serializer = self.get_serializer(
-            instance, data=request.data, partial=True)
+        data = request.data.copy()
+        password = get_user_model().objects.make_random_password()
+        username = data['email'].split('@')[0] + "_1"
+        while get_user_model().objects.filter(username=username).exists():
+            username = username[:-1] + str(int(username[-1]) + 1)
+
+        data.update({'username':username, 'password':password, 'password2':password})
+        serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
-        return Response({'username': instance.username, 'email':instance.email, 'position': instance.position, 'workplace': instance.workplace.pk})
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        del data['password2']
+        return Response(data, status=status.HTTP_201_CREATED, headers=headers)
+
+
 
 
 

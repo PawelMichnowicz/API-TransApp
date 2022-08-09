@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
 # Register your models here.
-from core import models
+from core.models import User, Document
 
 class UserAdmin(BaseUserAdmin):
     """Define the admin pages"""
@@ -11,6 +11,9 @@ class UserAdmin(BaseUserAdmin):
         (None, {'fields': ('username', 'workplace', 'position', 'email', 'password',)}),
     )
 
-admin.site.register(models.User, UserAdmin)
+admin.site.register(User, UserAdmin)
 
 
+@admin.register(Document)
+class DocumentAdmin(admin.ModelAdmin):
+    list_display = ['name', 'file']

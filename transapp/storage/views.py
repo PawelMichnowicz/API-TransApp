@@ -1,43 +1,44 @@
+from multiprocessing.connection import deliver_challenge
 from django.contrib.auth import get_user_model
 
 from rest_framework import generics, mixins, viewsets, serializers
 from rest_framework.response import Response
 
-from core.permissions import IsDirector, IsAdmin, WorkHere, IsCoordinator
+from core.permissions import IsDirector, IsAdmin, WorkHere, IsCoordinator, WorkHereTimespan
 from core.models import WorkPosition
-
 
 from storage.models import OpenningTime, Warehouse, Action, Timespan
 from storage.serializers import ActiopnOrderSerializer, OpenningTimeSerializer, WarehouseSerializer, ActionSerializer, TimespanSerializer
-from storage.serializers import WarehouseSerializer, WarehouserStatsSerializer, WarehouseWorkerSerializer
+from storage.serializers import WarehouseSerializer, WorkerStatsSerializer, WarehouseStatsSerializer
 from storage.constants import StatusChoice
 
-class AddTimespanApi(generics.GenericAPIView):
 
-    queryset = Warehouse.objects.all()
-    permission_classes = [IsDirector, WorkHere]
+class AddTimespanApi(mixins.CreateModelMixin,
+                     viewsets.GenericViewSet):
+
+    permission_classes = [IsDirector, WorkHereTimespan]
     serializer_class = TimespanSerializer
-
-    def post(self, request, pk, *args, **kwargs):
-
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        timespan = serializer.save()
-
-        instance = self.get_object()
-        instance.timespan_available.add(timespan)
-        instance.save()
-
-        return Response({'warehouse_id': instance.pk, f'action_timespan': serializer.data})
-
 
 
 class WorkersStatsApi(mixins.ListModelMixin,
                       viewsets.GenericViewSet):
 
-    queryset = get_user_model().objects.filter(position=WorkPosition.WAREHOUSER.value).all()
+    queryset = get_user_model().objects.filter(
+        position=WorkPosition.WAREHOUSER.value).all()
     permission_classes = [IsDirector, ]
-    serializer_class = WarehouserStatsSerializer
+    serializer_class = WorkerStatsSerializer
+
+
+class WarehouseStatsApi(mixins.RetrieveModelMixin,
+                        viewsets.GenericViewSet):
+
+    permission_classes = [IsCoordinator, WorkHere]
+    serializer_class = WarehouseStatsSerializer
+    queryset = Warehouse.objects.all()
+    # def get_queryset(self):
+    #     delivered = Action.objects.filter(status=StatusChoice.DELIVERED)
+    #     delivered_broken = Action.objects.filter(status=StatusChoice.DELIVERED_BROKEN)
+    #     return delivered | delivered_broken
 
 
 class WarehouseApi(mixins.CreateModelMixin,
@@ -59,7 +60,7 @@ class WarehouseApi(mixins.CreateModelMixin,
                 weekday=openning_day['weekday'],
                 from_hour=openning_day['from_hour'],
                 to_hour=openning_day['to_hour'],
-                ).first()
+            ).first()
             if not day_obj:
                 serializer = OpenningTimeSerializer(data=openning_day)
                 serializer.is_valid(raise_exception=True)
@@ -70,11 +71,10 @@ class WarehouseApi(mixins.CreateModelMixin,
         ''' Helper function to handle nested serializer during update and create'''
         timespan_available = self.request.data['timespan_available']
         for action_time in timespan_available:
+            action_time['warehouse'] = instance.pk
             serializer = TimespanSerializer(data=action_time)
             serializer.is_valid(raise_exception=True)
-            action_time_obj = serializer.save()
-            instance.timespan_available.add(action_time_obj)
-
+            serializer.save()
 
     def perform_create(self, serializer):
         ''' Add oppening time and action available data during create instance'''
@@ -92,14 +92,25 @@ class WarehouseApi(mixins.CreateModelMixin,
             instance.openning_time.clear()
             self.perform_openning_time(instance)
         if 'timespan_available' in self.request.data:
-            instance.timespan_available.clear()
+            instance.timespan_available.all().delete()
             self.perform_timespan_available(instance)
         instance.save()
 
 
-class ActionApi(mixins.RetrieveModelMixin,
-                mixins.ListModelMixin,
-                viewsets.GenericViewSet):
+class ActionDirectorApi(mixins.RetrieveModelMixin,
+                           mixins.ListModelMixin,
+                           viewsets.GenericViewSet):
+
+    permission_classes = [IsDirector, ]
+    serializer_class = ActionSerializer
+
+    def get_queryset(self):
+        return Action.objects.filter(warehouse=self.request.user.workplace)
+
+
+class ActionCoordinatorApi(mixins.RetrieveModelMixin,
+                           mixins.ListModelMixin,
+                           viewsets.GenericViewSet):
 
     queryset = Action.objects.all()
     serializer_class = ActionSerializer
@@ -144,6 +155,7 @@ class AcceptBrokenAction(generics.GenericAPIView):
 
     def post(self, request, *args, **kwargs):
         instance = self.get_object()
-        buyer_email = instance.transport.orders.values_list().filter(buyer_email='miseczkag@gmail.com')
+        buyer_email = instance.transport.orders.values_list().filter(
+            buyer_email='miseczkag@gmail.com')
         instance.status = StatusChoice.DELIVERED_BROKEN
         return Response(self.get_serializer(instance=instance).data)

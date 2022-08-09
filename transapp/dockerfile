@@ -4,9 +4,9 @@ FROM python:3.10.2-slim
 RUN mkdir /code
 WORKDIR /code
 
-RUN apt update && apt install -y build-essential default-libmysqlclient-dev 
+RUN apt update && apt install -y build-essential default-libmysqlclient-dev
 RUN python -m pip install --upgrade pip
-COPY requirements.txt requirements.txt 
+COPY requirements.txt requirements.txt
 RUN pip install -r requirements.txt
 COPY . .
 

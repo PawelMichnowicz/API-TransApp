@@ -1,6 +1,8 @@
 from rest_framework import serializers
+
 from django.contrib.auth import get_user_model
 
+from .models import Document
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -29,3 +31,18 @@ class UserSerializer(serializers.ModelSerializer):
         user.set_password(password)
         user.save()
         return user
+
+
+class DocumentSerializer(serializers.ModelSerializer):
+    file_path = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Document
+        fields = ['name', 'file_path']
+
+    def get_file_path(self, obj):
+        return obj.file.path
+
+
+
+        

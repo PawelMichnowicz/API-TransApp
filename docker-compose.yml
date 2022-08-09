@@ -41,7 +41,6 @@ services:
       - redis
       - celery_worker
 
-
   api:
     container_name: api_container
     build: ./transapp
@@ -70,3 +69,4 @@ services:
 
 volumes:
   my-db2:
+    external: true

@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'drf_yasg',
+    'drf_pdf',
 ]
 
 MIDDLEWARE = [
@@ -179,4 +180,4 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'core.User'
 
-
+MEDIA_ROOT = os.path.join(BASE_DIR, 'core', 'media')

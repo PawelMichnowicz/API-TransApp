@@ -4,10 +4,20 @@ from django.contrib.auth import get_user_model
 
 from transport.serializers import TransportSerializer, OrderSerializer
 
+from storage.constants import StatusChoice
+
 from .models import OpenningTime, Timespan, Warehouse, Action
 
+import datetime
 
 class TimespanSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Timespan
+        fields = ['monthday', 'from_hour', 'to_hour', 'action_type', 'warehouse']
+
+
+class CreateTimespanSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Timespan
@@ -31,8 +41,34 @@ class WarehouseWorkerSerializer(serializers.ModelSerializer):
         return super().validate(attrs)
 
 
-class WarehouserStatsSerializer(serializers.ModelSerializer):
+class WarehouseStatsSerializer(serializers.ModelSerializer):
     stats = serializers.SerializerMethodField('calculate_stats')
+
+    class Meta:
+        model = Warehouse
+        fields = ['name',  'stats']
+
+    def calculate_stats(self, obj):
+        stats = {'num_of_deliver':0, 'broken_deliver':0}
+        sum_duration = datetime.timedelta(0)
+        for action in obj.actions.values():
+            stats['num_of_deliver'] += 1
+            if action["status"] == StatusChoice.DELIVERED_BROKEN:
+                stats['broken_deliver'] += 1
+            sum_duration += action['duration']
+        try:
+            stats['average_duration'] = str(sum_duration / stats['num_of_deliver'])
+        except ZeroDivisionError:
+            stats['average_duration'] = None
+        return stats
+
+
+class WorkerStatsSerializer(serializers.ModelSerializer):
+    stats = serializers.SerializerMethodField('calculate_stats')
+
+    class Meta:
+        model = get_user_model()
+        fields = ['username', 'stats']
 
     def calculate_stats(self, obj):
         stats = []
@@ -40,10 +76,6 @@ class WarehouserStatsSerializer(serializers.ModelSerializer):
             stats.append({
                         'action': action['action_type'], 'status': action['status'], 'duration': action['duration']})
         return stats
-
-    class Meta:
-        model = get_user_model()
-        fields = ['username', 'stats']
 
 
 class OpenningTimeSerializer(serializers.ModelSerializer):
@@ -55,7 +87,7 @@ class OpenningTimeSerializer(serializers.ModelSerializer):
 
 class WarehouseSerializer(serializers.ModelSerializer):
     openning_time = OpenningTimeSerializer(many=True)
-    timespan_available = TimespanSerializer(many=True, required=False)
+    timespan_available = CreateTimespanSerializer(many=True, required=False)
 
     class Meta:
         model = Warehouse
@@ -89,7 +121,7 @@ class ActionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Action
-        fields = ['status', 'transport', 'action_type', 'workers', 'duration', 'warehouse']
+        fields = ['pk', 'status', 'transport', 'action_type', 'workers', 'duration', 'warehouse']
 
 
 class ActiopnOrderSerializer(serializers.ModelSerializer):
