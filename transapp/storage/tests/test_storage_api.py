@@ -13,8 +13,8 @@ from transport.models import Route, Transport
 
 from storage.constants import StatusChoice
 from storage.models import ActionChoice
-from storage.models import Warehouse, Action, Timespan
-from storage.serializers import WorkerStatsSerializer, ActionSerializer, WarehouseSerializer, ActiopnOrderSerializer, TimespanSerializer
+from storage.models import Warehouse, Action, ActionWindow
+from storage.serializers import WorkerStatsSerializer, ActionSerializer, WarehouseSerializer, ActionOrderSerializer, ActionWindowSerializer
 
 from core.models import WorkPosition
 
@@ -65,19 +65,19 @@ class TestStorageApp(TestCase):
             **{'name': self.initial_name})
         self.warehouse3 = Warehouse.objects.create(**{'name': 'C'})
 
-        self.timespan_send = Timespan.objects.create(
+        self.action_window_send = ActionWindow.objects.create(
             **{'monthday': datetime.datetime(2020, 1, 1),
                'from_hour': datetime.time(12, 00),
                'to_hour': datetime.time(15, 00),
                'action_type': ActionChoice.SEND,
                'warehouse': self.warehouse})
-        self.timespan_send2 = Timespan.objects.create(
+        self.action_window_send2 = ActionWindow.objects.create(
             **{'monthday': datetime.datetime(2020, 1, 2),
                'from_hour': datetime.time(13, 00),
                'to_hour': datetime.time(16, 00),
                'action_type': ActionChoice.SEND,
                'warehouse': self.warehouse})
-        self.timespan_receive = Timespan.objects.create(
+        self.action_window_receive = ActionWindow.objects.create(
             **{'monthday': datetime.datetime(2020, 1, 3),
                'from_hour': datetime.time(14, 00),
                'to_hour': datetime.time(17, 00),
@@ -98,21 +98,21 @@ class TestStorageApp(TestCase):
                'action_type': ActionChoice.SEND,
                'status': StatusChoice.DELIVERED,
                'duration': datetime.timedelta(seconds=60*60),
-               'timespan': self.timespan_send})
+               'action_window': self.action_window_send})
         self.send_action2 = Action.objects.create(
             **{'warehouse': self.warehouse,
                'transport': self.transport2,
                'action_type': ActionChoice.SEND,
                'status': StatusChoice.IN_PROGRESS,
                'duration': datetime.timedelta(seconds=60*60),
-               'timespan': self.timespan_send2})
+               'action_window': self.action_window_send2})
         self.receive_action = Action.objects.create(
             **{'warehouse': self.warehouse,
                'transport': self.transport3,
                'action_type': ActionChoice.RECEIVE,
                'status': StatusChoice.IN_PROGRESS,
                'duration': datetime.timedelta(seconds=2*60*60),
-               'timespan': self.timespan_receive})
+               'action_window': self.action_window_receive})
         self.send_action.workers.add(self.worker1)
         self.receive_action.workers.add(self.worker1)
         self.receive_action.workers.add(self.worker2)
@@ -192,12 +192,11 @@ class TestStorageApp(TestCase):
         self.assertEqual(res_coor.status_code, 200)
 
         send_action = Action.objects.get(pk=self.send_action.pk)
-        serializer = ActiopnOrderSerializer(send_action)
+        serializer = ActionOrderSerializer(send_action)
         self.assertEqual(res_coor.data, serializer.data)
 
     def test_create_worker(self):
         pass
-
 
     def test_downgrade_worker(self):
 
@@ -216,7 +215,7 @@ class TestStorageApp(TestCase):
 
         data = {
             "name": "Updated Name",
-            "timespan_available": [],
+            "action_window": [],
             "workers": [],
             "openning_time": [{"weekday": 1,
                                "from_hour": "15:00:00",
@@ -224,7 +223,7 @@ class TestStorageApp(TestCase):
                               {"weekday": 2,
                                "from_hour": "15:00:00",
                                "to_hour": "18:00:00"}],
-            'timespan_available': []
+            'action_window': []
         }
 
         def updated_data(update_data, data=data):
@@ -248,13 +247,13 @@ class TestStorageApp(TestCase):
         wrong_openning_data2 = [{'weekday': 1, 'from_hour': '19:00:00', 'to_hour': '18:00:00'},
                                 {'weekday': 2, 'from_hour': '10:00:00', 'to_hour': '17:00:00'}]
 
-        correct_timespan_data = [
+        correct_action_window_data = [
             {"action_type": "send", "from_hour": "12:22:00",
                 "to_hour": "13:13:00", "monthday": "2022-12-02"},
             {"action_type": "receive", "from_hour": "10:22:00",
                 "to_hour": "13:13:00", "monthday": "2022-12-02"}
         ]
-        wrong_timespan_data = [
+        wrong_action_window_data = [
             {"action_type": "send", "from_hour": "12:22:00",
                 "to_hour": "10:13:00", "monthday": "2022-12-02"},
             {"action_type": "receive", "from_hour": "10:22:00",
@@ -277,7 +276,7 @@ class TestStorageApp(TestCase):
         put_admin_ok = self.admin_client.put(
             reverse('storage:warehouse-detail', args=[self.warehouse.pk]),
             updated_data({"openning_time": correct_openning_data,
-                         'timespan_available': correct_timespan_data}),
+                         'action_window': correct_action_window_data}),
             format='json')
         patch_admin_ok = self.admin_client.patch(
             reverse('storage:warehouse-detail', args=[self.warehouse2.pk]),
@@ -286,7 +285,7 @@ class TestStorageApp(TestCase):
         post_admin_ok = self.admin_client.post(
             reverse('storage:warehouse-list'),
             updated_data({"openning_time": correct_openning_data,
-                         'timespan_available': correct_timespan_data,
+                         'action_window': correct_action_window_data,
                           'name': created_name}),
             format='json')
         delete_admin_ok = self.admin_client.delete(
@@ -312,7 +311,7 @@ class TestStorageApp(TestCase):
                 self.admin_client.post(
                     reverse('storage:warehouse-list'),
                     updated_data(
-                        {"timespan_available": wrong_timespan_data, 'name': created_name}),
+                        {"action_window": wrong_action_window_data, 'name': created_name}),
                     format='json')
         except IntegrityError:
             pass
@@ -341,20 +340,20 @@ class TestStorageApp(TestCase):
         self.assertEqual(
             len(self.warehouse.openning_time.all()),
             len(correct_openning_data))
-        self.assertTrue(self.warehouse.timespan_available.filter(
-            monthday=correct_timespan_data[0]['monthday'],
-            from_hour=correct_timespan_data[0]['from_hour'],
-            to_hour=correct_timespan_data[0]['to_hour']
+        self.assertTrue(self.warehouse.action_window.filter(
+            monthday=correct_action_window_data[0]['monthday'],
+            from_hour=correct_action_window_data[0]['from_hour'],
+            to_hour=correct_action_window_data[0]['to_hour']
         ).exists())
-        self.assertTrue(self.warehouse.timespan_available.filter(
-            monthday=correct_timespan_data[1]['monthday'],
-            from_hour=correct_timespan_data[1]['from_hour'],
-            to_hour=correct_timespan_data[1]['to_hour']
+        self.assertTrue(self.warehouse.action_window.filter(
+            monthday=correct_action_window_data[1]['monthday'],
+            from_hour=correct_action_window_data[1]['from_hour'],
+            to_hour=correct_action_window_data[1]['to_hour']
         ).exists())
 
         self.assertEqual(
-            len(self.warehouse.timespan_available.all()),
-            len(correct_timespan_data))
+            len(self.warehouse.action_window.all()),
+            len(correct_action_window_data))
 
         # patch test
         self.assertEqual(self.initial_name, self.warehouse2.name)
@@ -387,47 +386,47 @@ class TestStorageApp(TestCase):
         self.assertEqual(
             len(new_warehouse.openning_time.all()),
             len(correct_openning_data))
-        self.assertTrue(new_warehouse.timespan_available.filter(
-            monthday=correct_timespan_data[0]['monthday'],
-            from_hour=correct_timespan_data[0]['from_hour'],
-            to_hour=correct_timespan_data[0]['to_hour']
+        self.assertTrue(new_warehouse.action_window.filter(
+            monthday=correct_action_window_data[0]['monthday'],
+            from_hour=correct_action_window_data[0]['from_hour'],
+            to_hour=correct_action_window_data[0]['to_hour']
         ).exists())
-        self.assertTrue(new_warehouse.timespan_available.filter(
-            monthday=correct_timespan_data[1]['monthday'],
-            from_hour=correct_timespan_data[1]['from_hour'],
-            to_hour=correct_timespan_data[1]['to_hour']
+        self.assertTrue(new_warehouse.action_window.filter(
+            monthday=correct_action_window_data[1]['monthday'],
+            from_hour=correct_action_window_data[1]['from_hour'],
+            to_hour=correct_action_window_data[1]['to_hour']
         ).exists())
         self.assertEqual(
-            len(new_warehouse.timespan_available.all()),
-            len(correct_timespan_data))
+            len(new_warehouse.action_window.all()),
+            len(correct_action_window_data))
 
         # delete test
         self.assertFalse(Warehouse.objects.filter(
             id=self.warehouse3.pk).exists())
 
-    def test_add_timespan(self):
+    def test_add_action_window(self):
 
-        timespan_data = {'monthday': '2022-10-19',
+        action_window_data = {'monthday': '2022-10-19',
                          'from_hour': '10:11:00',
                          'to_hour': '18:13:00',
                          'action_type': 'send',
                          'warehouse': self.warehouse.pk}
 
         res_dir_workhere = self.dir_client.post(
-            reverse('storage:add-timespan-list'),
-            timespan_data)
+            reverse('storage:add-action-window-list'),
+            action_window_data)
         res_dir_not_workhere = self.dir_client2.post(
-            reverse('storage:add-timespan-list'),
-            timespan_data)
+            reverse('storage:add-action-window-list'),
+            action_window_data)
         self.warehouse.refresh_from_db()
 
         self.assertEqual(res_dir_not_workhere.status_code, 403)
         self.assertEqual(res_dir_workhere.status_code, 201)
 
-        self.assertTrue(self.warehouse.timespan_available.filter(
-            monthday=timespan_data['monthday'],
-            from_hour=timespan_data['from_hour'],
-            to_hour=timespan_data['to_hour']
+        self.assertTrue(self.warehouse.action_window.filter(
+            monthday=action_window_data['monthday'],
+            from_hour=action_window_data['from_hour'],
+            to_hour=action_window_data['to_hour']
         ).exists())
-        self.assertIn(self.timespan_send,
-                      self.warehouse.timespan_available.all())
+        self.assertIn(self.action_window_send,
+                      self.warehouse.action_window.all())

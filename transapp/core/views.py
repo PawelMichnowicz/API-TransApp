@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.http import HttpResponse
+import jwt
 
 from rest_framework import generics, mixins, viewsets, serializers
 from rest_framework.views import APIView
@@ -12,6 +13,13 @@ from storage.serializers import WarehouseWorkerSerializer
 from .models import WorkPosition, Document
 from .permissions import IsDirector
 from .serializers import UserSerializer, DocumentSerializer
+
+from dotenv import dotenv_values
+
+env_var = dotenv_values()
+ACCESS_SECRET = env_var['ACCESS_SECRET']
+REFRESH_SECRET = env_var['REFRESH_SECRET']
+ALG = env_var['ALG']
 
 
 class RegisterApi(APIView):
@@ -34,7 +42,6 @@ class DocumentsAPI(mixins.ListModelMixin,
     serializer_class = DocumentSerializer
 
 
-
 class WorkerDowngradeApi(generics.GenericAPIView):
 
     class EmptySerializer(serializers.Serializer):
@@ -47,8 +54,6 @@ class WorkerDowngradeApi(generics.GenericAPIView):
     def post(self, request, pk, format=None):
         user = self.get_object()
         user.workplace = None
-        # user.email = None
-        # user.position = WorkPosition.USER.value
         user.save()
         return Response({'username': user.username, 'position': user.position, 'workplace': user.workplace})
 

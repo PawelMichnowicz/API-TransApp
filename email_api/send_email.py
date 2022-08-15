@@ -1,5 +1,5 @@
 import requests
-from enum import Enum,  auto
+from enum import Enum
 from fastapi import FastAPI
 from pydantic import BaseModel
 from starlette.responses import JSONResponse
@@ -12,25 +12,44 @@ app = FastAPI()
 enum_providers = {key: val.__name__ for key, val in get_providers().items()}
 ProviderEnum = Enum('PoviderEnum', enum_providers)
 
-class Token(BaseModel):
+class Data(BaseModel):
     token: str
+    email: str
+    order_id: str
 
+@app.post("/email-complain")
+def simple_send(data: Data, provider: ProviderEnum):
 
-@app.post("/email")
-def simple_send(access: Token, provider: ProviderEnum):
-
-    url = f'http://api:8000/api/token/verify/'
-    url_data = f'http://api:8000/api/check?token={access.token}'
-    my_token = {'token': access.token}
-
+    url = 'http://api:8000/api/users/token/verify/'
+    my_token = {'token': data.token}
     response = requests.post(url, json = my_token)
 
     match response.status_code:
         case 200:
-            data = requests.get(url_data)
-            text = f"Użytkownik {data.json()['username']}  wyraża chęć opóźnienia swojego transportu o  dni W celu ustalenia szczegółów odpisz na: {data.json()['email']}"
-            recipent = 'miseczkag@gmail.com'
-            sender = 'pmichnowicz13@gmail.com'
+            text = f"Twoje zamówienie o numerze {data.order_id} uległo uszkodzeniu w trakcie transportu, reklamacja została złożona automatycznie, pieniądze zostaną zwrócone na twoje konto"
+            recipent = data.email
+            sender = 'miseczkag@gmail.com'
             return provider_send(provider.name, sender, recipent, text)
         case _:
             return JSONResponse(status_code=response.status_code, content=response.json())
+
+
+
+# @app.post("/email")
+# def simple_send(access: Token, provider: ProviderEnum):
+
+#     url = 'http://api:8000/api/users/token/verify/'
+#     url_data = f'http://api:8000/api/users/email-data?token={access.token}'
+#     my_token = {'token': access.token}
+
+#     response = requests.post(url, json = my_token)
+
+#     match response.status_code:
+#         case 200:
+#             data = requests.get(url_data)
+#             text = f"Użytkownik {data.json()['username']}  wyraża chęć opóźnienia swojego transportu o  dni W celu ustalenia szczegółów odpisz na: {data.json()['email']}"
+#             recipent = 'miseczkag@gmail.com'
+#             sender = 'pmichnowicz13@gmail.com'
+#             return provider_send(provider.name, sender, recipent, text)
+#         case _:
+#             return JSONResponse(status_code=response.status_code, content=response.json())

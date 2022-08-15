@@ -6,21 +6,23 @@ from transport.serializers import TransportSerializer, OrderSerializer
 
 from storage.constants import StatusChoice
 
-from .models import OpenningTime, Timespan, Warehouse, Action
+from .models import OpenningTime, ActionWindow, Warehouse, Action
 
 import datetime
 
-class TimespanSerializer(serializers.ModelSerializer):
+
+class ActionWindowSerializer(serializers.ModelSerializer):
 
     class Meta:
-        model = Timespan
-        fields = ['monthday', 'from_hour', 'to_hour', 'action_type', 'warehouse']
+        model = ActionWindow
+        fields = ['monthday', 'from_hour',
+                  'to_hour', 'action_type', 'warehouse']
 
 
-class CreateTimespanSerializer(serializers.ModelSerializer):
+class ActionWindowCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
-        model = Timespan
+        model = ActionWindow
         fields = ['monthday', 'from_hour', 'to_hour', 'action_type']
 
 
@@ -33,7 +35,8 @@ class WarehouseWorkerSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
 
         if not 'email' in attrs or not 'workplace' in attrs:
-            raise serializers.ValidationError('You have to provide email and workplace')
+            raise serializers.ValidationError(
+                'You have to provide email and workplace')
 
         if get_user_model().objects.filter(email=attrs['email']).exists():
             raise serializers.ValidationError('Email is already in use')
@@ -49,7 +52,7 @@ class WarehouseStatsSerializer(serializers.ModelSerializer):
         fields = ['name',  'stats']
 
     def calculate_stats(self, obj):
-        stats = {'num_of_deliver':0, 'broken_deliver':0}
+        stats = {'num_of_deliver': 0, 'broken_deliver': 0}
         sum_duration = datetime.timedelta(0)
         for action in obj.actions.values():
             stats['num_of_deliver'] += 1
@@ -57,7 +60,8 @@ class WarehouseStatsSerializer(serializers.ModelSerializer):
                 stats['broken_deliver'] += 1
             sum_duration += action['duration']
         try:
-            stats['average_duration'] = str(sum_duration / stats['num_of_deliver'])
+            stats['average_duration'] = str(
+                sum_duration / stats['num_of_deliver'])
         except ZeroDivisionError:
             stats['average_duration'] = None
         return stats
@@ -74,7 +78,7 @@ class WorkerStatsSerializer(serializers.ModelSerializer):
         stats = []
         for action in obj.action_set.values():
             stats.append({
-                        'action': action['action_type'], 'status': action['status'], 'duration': action['duration']})
+                'action': action['action_type'], 'status': action['status'], 'duration': action['duration']})
         return stats
 
 
@@ -82,18 +86,21 @@ class OpenningTimeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OpenningTime
-        fields = ['weekday', 'from_hour', 'to_hour']
+        fields = ['weekday', 'from_hour', 'to_hour', 'warehouse']
+        extra_kwargs = {"warehouse": {"required": False, "allow_null": True}}
 
 
 class WarehouseSerializer(serializers.ModelSerializer):
     openning_time = OpenningTimeSerializer(many=True)
-    timespan_available = CreateTimespanSerializer(many=True, required=False)
+    action_window = ActionWindowCreateSerializer(many=True, required=False)
 
     class Meta:
         model = Warehouse
-        fields = ['pk', 'name', 'timespan_available', 'openning_time', 'workers']
+        fields = ['pk', 'name', 'action_window',
+                  'openning_time', 'workers']
 
     def validate(self, attrs):
+        ''' Validate if valid oppening time provided '''
         list_of_days = []
         if 'openning_time' in self.initial_data:
             openning_data = self.initial_data['openning_time']
@@ -102,17 +109,21 @@ class WarehouseSerializer(serializers.ModelSerializer):
                 openning_serializer.is_valid(raise_exception=True)
                 list_of_days.append(openning_serializer.data['weekday'])
             if not (len(set(list_of_days)) == len(list_of_days)):
-                raise serializers.ValidationError('You have to provided only one timespan per day')
+                raise serializers.ValidationError(
+                    'You have to provided only one action window per day')
         return super().validate(attrs)
 
     def update(self, instance, validated_data):
+        ''' Drop openning time and action window from validated data to handle nested serializer '''
         validated_data.pop('openning_time', None)
-        validated_data.pop('timespan_available', None)
+        validated_data.pop('action_window', None)
         return super().update(instance, validated_data)
 
     def create(self, validated_data):
+        ''' Drop openning time from validated data to handle nested serializer and check if action window isn't in request data'''
         validated_data.pop('openning_time', None)
-        validated_data.pop('timespan_available', None)
+        if 'action_window' in validated_data:
+            raise serializers.ValidationError('You cannot include action window during create process')
         return super().create(validated_data)
 
 
@@ -121,10 +132,11 @@ class ActionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Action
-        fields = ['pk', 'status', 'transport', 'action_type', 'workers', 'duration', 'warehouse']
+        fields = ['pk', 'status', 'transport', 'action_type',
+                  'workers', 'duration', 'warehouse']
 
 
-class ActiopnOrderSerializer(serializers.ModelSerializer):
+class ActionOrderSerializer(serializers.ModelSerializer):
     orders = serializers.SerializerMethodField()
 
     class Meta:
@@ -135,9 +147,3 @@ class ActiopnOrderSerializer(serializers.ModelSerializer):
         orders_queryset = obj.transport.orders
         serializer = OrderSerializer(orders_queryset, many=True)
         return serializer.data
-
-
-
-
-
-

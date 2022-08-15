@@ -29,7 +29,7 @@ class WorkHere(BasePermission):
         return request.user.workplace == obj or request.user.position == WorkPosition.ADMIN.value
 
 
-class WorkHereTimespan(BasePermission):
+class WorkHereActionWindow(BasePermission):
 
     def has_permission(self, request, view):
         pk_warehouse = int(request.data['warehouse'])

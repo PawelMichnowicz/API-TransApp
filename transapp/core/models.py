@@ -42,7 +42,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     position = models.CharField(max_length=255, choices=WorkPosition.choices, default=WorkPosition.USER)
-    workplace = models.ForeignKey(Warehouse, on_delete=models.CASCADE, related_name='workers', blank=True, null=True, default=None) # contentypes in future
+    workplace = models.ForeignKey(Warehouse, on_delete=models.SET_NULL, related_name='workers', blank=True, null=True, default=None) # contentypes in future
 
     objects = UserManager()
 

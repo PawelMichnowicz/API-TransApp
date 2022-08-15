@@ -44,5 +44,3 @@ class DocumentSerializer(serializers.ModelSerializer):
         return obj.file.path
 
 
-
-        

@@ -12,8 +12,9 @@ from .constants import StatusChoice
 
 from .constants import WEEKDAYS
 
+
 class ActionChoice(models.TextChoices):
-    SEND = 'send' , 'Send'
+    SEND = 'send', 'Send'
     RECEIVE = 'receive', 'Receive'
 
 
@@ -32,31 +33,31 @@ class Time(models.Model):
         ]
 
 
-class OpenningTime(Time):
-
-    weekday = models.IntegerField(
-        choices=WEEKDAYS)
-
-    def __str__(self):
-        return f"{self.get_weekday_display()} {self.from_hour.strftime('%H:%M')}-{self.to_hour.strftime('%H:%M')}"
-
-
 class Warehouse(models.Model):
 
     name = models.CharField(max_length=255, unique=True)
-    openning_time = models.ManyToManyField(OpenningTime)
-    #timespan_available
 
     def __str__(self):
         return f'{self.name}_{self.pk}'
 
 
-class Timespan(Time):
+class OpenningTime(Time):
+
+    weekday = models.IntegerField(choices=WEEKDAYS)
+    warehouse = models.ForeignKey(
+        Warehouse, on_delete=models.CASCADE, related_name='openning_time')
+
+    def __str__(self):
+        return f"{self.get_weekday_display()} {self.from_hour.strftime('%H:%M')}-{self.to_hour.strftime('%H:%M')}"
+
+
+class ActionWindow(Time): 
 
     monthday = models.DateField()
-    action_type = models.CharField(max_length=255, choices=ActionChoice.choices)
-    warehouse = models.ForeignKey(Warehouse, related_name='timespan_available', on_delete=models.CASCADE)
-
+    action_type = models.CharField(
+        max_length=255, choices=ActionChoice.choices)
+    warehouse = models.ForeignKey(
+        Warehouse, related_name='action_window', on_delete=models.CASCADE)
 
     def __str__(self):
         return f"{self.monthday.strftime('%b%d')} {self.from_hour.strftime('%H:%M')}-{self.to_hour.strftime('%H:%M')}  "
@@ -66,14 +67,15 @@ class Action(models.Model):
 
     workers = models.ManyToManyField(get_user_model())
     duration = models.DurationField()
-    warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, related_name='actions')
-    action_type = models.CharField(max_length=255, choices=ActionChoice.choices)
-    timespan = models.OneToOneField(Timespan, on_delete=models.CASCADE, related_name='action')
-    transport = models.OneToOneField(Transport, on_delete=models.CASCADE, related_name='action')
+    warehouse = models.ForeignKey(
+        Warehouse, on_delete=models.CASCADE, related_name='actions')
+    action_type = models.CharField(
+        max_length=255, choices=ActionChoice.choices)
+    action_window = models.OneToOneField(
+        ActionWindow, on_delete=models.CASCADE, related_name='action')
+    transport = models.OneToOneField(
+        Transport, on_delete=models.CASCADE, related_name='action')
     status = models.CharField(max_length=25, choices=StatusChoice.choices)
 
     def __str__(self):
         return f'{str(self.transport)}  {str(self.action_type)}  {str(self.status)}'
-
-
-

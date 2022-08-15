@@ -19,6 +19,15 @@ class RouteAdmin(admin.ModelAdmin):
     list_display = ['pk', 'origin', 'destination']
 
 
+
+class OrdersInline(admin.StackedInline):
+    model = Order
+    raw_id_fields= ['transport',]
+    fields = ['buyer_email',]
+    readonly_fields = ['order_id' ]
+    max_num=0
+
 @admin.register(Transport)
 class TransportAdmin(admin.ModelAdmin):
     list_display = ['pk', 'route', 'vehicle', 'need_refrigerate', 'action']
+    inlines = [OrdersInline, ]

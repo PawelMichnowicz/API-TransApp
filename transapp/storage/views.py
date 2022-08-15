@@ -1,23 +1,18 @@
-from multiprocessing.connection import deliver_challenge
+import json
+import requests
+
 from django.contrib.auth import get_user_model
 
 from rest_framework import generics, mixins, viewsets, serializers
 from rest_framework.response import Response
 
-from core.permissions import IsDirector, IsAdmin, WorkHere, IsCoordinator, WorkHereTimespan
+from core.permissions import IsDirector, IsAdmin, WorkHere, IsCoordinator, WorkHereActionWindow
 from core.models import WorkPosition
 
-from storage.models import OpenningTime, Warehouse, Action, Timespan
-from storage.serializers import ActiopnOrderSerializer, OpenningTimeSerializer, WarehouseSerializer, ActionSerializer, TimespanSerializer
+from storage.models import OpenningTime, Warehouse, Action, ActionWindow
+from storage.serializers import ActionOrderSerializer, OpenningTimeSerializer, WarehouseSerializer, ActionSerializer, ActionWindowSerializer
 from storage.serializers import WarehouseSerializer, WorkerStatsSerializer, WarehouseStatsSerializer
 from storage.constants import StatusChoice
-
-
-class AddTimespanApi(mixins.CreateModelMixin,
-                     viewsets.GenericViewSet):
-
-    permission_classes = [IsDirector, WorkHereTimespan]
-    serializer_class = TimespanSerializer
 
 
 class WorkersStatsApi(mixins.ListModelMixin,
@@ -35,10 +30,6 @@ class WarehouseStatsApi(mixins.RetrieveModelMixin,
     permission_classes = [IsCoordinator, WorkHere]
     serializer_class = WarehouseStatsSerializer
     queryset = Warehouse.objects.all()
-    # def get_queryset(self):
-    #     delivered = Action.objects.filter(status=StatusChoice.DELIVERED)
-    #     delivered_broken = Action.objects.filter(status=StatusChoice.DELIVERED_BROKEN)
-    #     return delivered | delivered_broken
 
 
 class WarehouseApi(mixins.CreateModelMixin,
@@ -52,54 +43,52 @@ class WarehouseApi(mixins.CreateModelMixin,
     serializer_class = WarehouseSerializer
     permission_classes = [IsAdmin, ]
 
-    def perform_openning_time(self, instance):
+    def include_openning_time(self, instance):
         ''' Helper function to handle nested serializer during update and create'''
         openning_time = self.request.data['openning_time']
         for openning_day in openning_time:
-            day_obj = OpenningTime.objects.filter(
-                weekday=openning_day['weekday'],
-                from_hour=openning_day['from_hour'],
-                to_hour=openning_day['to_hour'],
-            ).first()
-            if not day_obj:
-                serializer = OpenningTimeSerializer(data=openning_day)
-                serializer.is_valid(raise_exception=True)
-                day_obj = serializer.save()
-            instance.openning_time.add(day_obj)
+            openning_day['warehouse'] = instance.pk
+            serializer = OpenningTimeSerializer(data=openning_day)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
 
-    def perform_timespan_available(self, instance):
+    def include_action_window(self, instance):
         ''' Helper function to handle nested serializer during update and create'''
-        timespan_available = self.request.data['timespan_available']
-        for action_time in timespan_available:
+        action_window = self.request.data['action_window']
+        for action_time in action_window:
             action_time['warehouse'] = instance.pk
-            serializer = TimespanSerializer(data=action_time)
+            serializer = ActionWindowSerializer(data=action_time)
             serializer.is_valid(raise_exception=True)
             serializer.save()
 
     def perform_create(self, serializer):
-        ''' Add oppening time and action available data during create instance'''
+        ''' Add oppening time data during create process '''
         instance = serializer.save()
-        if 'openning_time' in self.request.data:
-            self.perform_openning_time(instance)
-        if 'timespan_available' in self.request.data:
-            self.perform_timespan_available(instance)
+        self.include_openning_time(instance)
         instance.save()
 
     def perform_update(self, serializer):
-        ''' Add oppening time and action available data during update instance'''
+        ''' Add oppening time and action available data during update process'''
         instance = serializer.save()
         if 'openning_time' in self.request.data:
-            instance.openning_time.clear()
-            self.perform_openning_time(instance)
-        if 'timespan_available' in self.request.data:
-            instance.timespan_available.all().delete()
-            self.perform_timespan_available(instance)
+            instance.openning_time.all().delete()
+            self.include_openning_time(instance)
+        if 'action_window' in self.request.data:
+            instance.action_window.all().delete()
+            self.include_action_window(instance)
         instance.save()
 
 
+class AddActionWindonApi(mixins.CreateModelMixin,
+                         viewsets.GenericViewSet):
+
+    permission_classes = [IsDirector, WorkHereActionWindow]
+    serializer_class = ActionWindowSerializer
+
+
 class ActionDirectorApi(mixins.RetrieveModelMixin,
-                           mixins.ListModelMixin,
-                           viewsets.GenericViewSet):
+                        mixins.ListModelMixin,
+                        viewsets.GenericViewSet):
 
     permission_classes = [IsDirector, ]
     serializer_class = ActionSerializer
@@ -118,19 +107,16 @@ class ActionCoordinatorApi(mixins.RetrieveModelMixin,
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
-        serializer = self.get_serializer(queryset, many=True)
         data = {}
-        for item in serializer.data:
-            status = item.pop('status')
-            if status in data:
-                data[status].append(item)
-            else:
-                data[status] = [item]
+        for unique in queryset.values('status').distinct():
+            status_queryset = queryset.filter(status=unique['status'])
+            serializer = self.get_serializer(status_queryset, many=True)
+            data[unique['status']] = serializer.data
         return Response(data)
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
-            return ActiopnOrderSerializer
+            return ActionOrderSerializer
         return self.serializer_class
 
 
@@ -155,7 +141,27 @@ class AcceptBrokenAction(generics.GenericAPIView):
 
     def post(self, request, *args, **kwargs):
         instance = self.get_object()
-        buyer_email = instance.transport.orders.values_list().filter(
-            buyer_email='miseczkag@gmail.com')
         instance.status = StatusChoice.DELIVERED_BROKEN
-        return Response(self.get_serializer(instance=instance).data)
+        response = self.get_serializer(instance=instance).data
+
+        data = request.data
+        provider = data['provider']
+        response['message'] = []
+        for order_id in data['broken_orders']:
+            email = instance.transport.orders.get(
+                order_id=order_id).buyer_email
+            send_email_url = f'http://mail:8001/email-complain?provider={provider}'
+            send_email_json = {'token': str(request.auth),
+                               'email': email,
+                               'order_id': order_id,
+                               }
+            send_email_response = requests.post(
+                send_email_url, json=send_email_json)
+            if send_email_response.status_code == 200:
+                response['message'].append(
+                    send_email_response.json()['message'])
+            else:
+                return Response(send_email_response.json(), status=send_email_response.status_code)
+
+        instance.save()
+        return Response(response)

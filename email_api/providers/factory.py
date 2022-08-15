@@ -32,7 +32,7 @@ def get_providers():
 def create_provider(name, sender, recipent):
     try:
         return get_providers()[name](sender, recipent)
-    except: # as error
+    except:
         return UnknownProvider()
 
 
@@ -87,7 +87,7 @@ class AwsProvider(Provider):
         except ClientError as e:
             return(e.response['Error']['Message'])
         else:
-            return JSONResponse(status_code=200, content={"message": "email has been sent by aws" + response['MessageId']})
+            return JSONResponse(status_code=200, content={"message": "email has been sent by aws to " + self.RECIPIENT})
 
 
 class GmailProvider(Provider):
@@ -116,7 +116,7 @@ class GmailProvider(Provider):
                     )
         fm = FastMail(self.conf)
         await fm.send_message(message)
-        return JSONResponse(status_code=200, content={"message": "email has been sent by gmail"})
+        return JSONResponse(status_code=200, content={"message": f"email has been sent by gmail to {self.recipent}"})
 
     def send(self, text):
         return asyncio.run(self.async_send(text))
