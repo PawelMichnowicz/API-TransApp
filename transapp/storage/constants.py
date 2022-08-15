@@ -9,7 +9,9 @@ WEEKDAYS = [
     (5, "Friday"),
     (6, "Saturday"),
     (7, "Sunday"),]
-
+SEND_EMAIL_URL = 'http://mail:8001/email-complain?provider={}'
+BROKEN_ORDER_TEXT = "Twoje zamówienie o numerze {} uległo uszkodzeniu w trakcie transportu, reklamacja została złożona do firmy kurierskiej, a pieniądze zostaną zwrócone na twoje konto"
+BROKEN_ORDERS_TEXT = "Twoje zamówienia o numerach {} uległy uszkodzeniu w trakcie transportu, reklamacja została złożona do firmy kurierskiej, a pieniądze zostaną zwrócone na twoje konto"
 class StatusChoice(models.TextChoices):
     DELIVERED_BROKEN = 'delivered_broken', 'Delivered with broken products'
     DELIVERED = 'delivered' , 'Delivered with no problems'

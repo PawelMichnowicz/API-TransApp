@@ -29,5 +29,5 @@ class OrdersInline(admin.StackedInline):
 
 @admin.register(Transport)
 class TransportAdmin(admin.ModelAdmin):
-    list_display = ['pk', 'route', 'vehicle', 'need_refrigerate', 'action']
+    list_display = ['pk', 'route', 'vehicle', 'need_refrigerate']
     inlines = [OrdersInline, ]

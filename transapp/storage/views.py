@@ -2,17 +2,19 @@ import json
 import requests
 
 from django.contrib.auth import get_user_model
+from django.db.models import Avg, Count
 
 from rest_framework import generics, mixins, viewsets, serializers
 from rest_framework.response import Response
 
 from core.permissions import IsDirector, IsAdmin, WorkHere, IsCoordinator, WorkHereActionWindow
+from core.functions import send_email
 from core.models import WorkPosition
 
 from storage.models import OpenningTime, Warehouse, Action, ActionWindow
 from storage.serializers import ActionOrderSerializer, OpenningTimeSerializer, WarehouseSerializer, ActionSerializer, ActionWindowSerializer
-from storage.serializers import WarehouseSerializer, WorkerStatsSerializer, WarehouseStatsSerializer
-from storage.constants import StatusChoice
+from storage.serializers import WarehouseSerializer, WorkerStatsSerializer
+from storage.constants import StatusChoice, BROKEN_ORDER_TEXT, BROKEN_ORDERS_TEXT, SEND_EMAIL_URL
 
 
 class WorkersStatsApi(mixins.ListModelMixin,
@@ -28,8 +30,21 @@ class WarehouseStatsApi(mixins.RetrieveModelMixin,
                         viewsets.GenericViewSet):
 
     permission_classes = [IsCoordinator, WorkHere]
-    serializer_class = WarehouseStatsSerializer
+    serializer_class = WarehouseSerializer
     queryset = Warehouse.objects.all()
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        duration = instance.actions.aggregate(Avg('duration'))["duration__avg"]
+        total_actions = instance.actions.aggregate(Count('pk'))["pk__count"]
+        broken_actions = instance.actions.filter(status=StatusChoice.DELIVERED_BROKEN).aggregate(Count('pk'))["pk__count"]
+
+        return Response({
+                    'name_warehouse':instance.name,
+                    'avg_duration':duration,
+                    'num_total_actions':total_actions,
+                    'num_broken_actions':broken_actions
+                    })
 
 
 class WarehouseApi(mixins.CreateModelMixin,
@@ -124,44 +139,51 @@ class AcceptAction(generics.GenericAPIView):
 
     queryset = Action.objects.filter(status=StatusChoice.IN_PROGRESS)
     permission_classes = [IsCoordinator]
-    serializer_class = ActionSerializer
 
     def post(self, request, *args, **kwargs):
         instance = self.get_object()
-        instance.status = StatusChoice.DELIVERED
+        instance.pk = None
+        match request.data['status']:
+            case StatusChoice.DELIVERED.value:
+                instance.status = StatusChoice.DELIVERED
+            case StatusChoice.DELIVERED_BROKEN.value:
+                instance.stats = StatusChoice.DELIVERED_BROKEN
+            case _:
+                serializers.ValidationError('Invalid status provided')
         instance.save()
-        return Response(self.get_serializer(instance=instance).data)
+        return Response(ActionSerializer(instance=instance).data)
 
 
-class AcceptBrokenAction(generics.GenericAPIView):
 
-    queryset = Action.objects.filter(status=StatusChoice.IN_PROGRESS)
+class ActionComplainEmail(generics.GenericAPIView):
+
+    queryset = Action.objects.filter(status=StatusChoice.DELIVERED_BROKEN)
     permission_classes = [IsCoordinator]
-    serializer_class = ActionSerializer
 
     def post(self, request, *args, **kwargs):
         instance = self.get_object()
-        instance.status = StatusChoice.DELIVERED_BROKEN
-        response = self.get_serializer(instance=instance).data
+        send_email_url = SEND_EMAIL_URL.format(request.data['provider'])
+        api_response = {'messages':[]}
 
-        data = request.data
-        provider = data['provider']
-        response['message'] = []
-        for order_id in data['broken_orders']:
-            email = instance.transport.orders.get(
-                order_id=order_id).buyer_email
-            send_email_url = f'http://mail:8001/email-complain?provider={provider}'
-            send_email_json = {'token': str(request.auth),
-                               'email': email,
-                               'order_id': order_id,
-                               }
-            send_email_response = requests.post(
-                send_email_url, json=send_email_json)
-            if send_email_response.status_code == 200:
-                response['message'].append(
-                    send_email_response.json()['message'])
+        orders = {}
+        for order_id in request.data['broken_orders']:
+            email = instance.transport.orders.get(order_id=order_id).buyer_email
+            if email not in orders:
+                orders[email] = [order_id]
             else:
-                return Response(send_email_response.json(), status=send_email_response.status_code)
+                orders[email].append(order_id)
 
-        instance.save()
-        return Response(response)
+        for email, orders in orders.items():
+            if len(orders)==1:
+                email_text = BROKEN_ORDER_TEXT.format(orders[0])
+            else:
+                email_text = BROKEN_ORDERS_TEXT.format('\n'.join(orders))
+            email_response = send_email(send_email_url, email, email_text, token=str(request.auth))
+            if email_response.status_code == 200:
+                api_response['messages'].append(
+                    email_response.json()['message'])
+            else:
+                return Response(email_response.json(), status=email_response.status_code)
+
+        return Response(api_response)
+

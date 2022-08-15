@@ -15,7 +15,7 @@ ProviderEnum = Enum('PoviderEnum', enum_providers)
 class Data(BaseModel):
     token: str
     email: str
-    order_id: str
+    email_text: str
 
 @app.post("/email-complain")
 def simple_send(data: Data, provider: ProviderEnum):
@@ -26,7 +26,7 @@ def simple_send(data: Data, provider: ProviderEnum):
 
     match response.status_code:
         case 200:
-            text = f"Twoje zamówienie o numerze {data.order_id} uległo uszkodzeniu w trakcie transportu, reklamacja została złożona automatycznie, pieniądze zostaną zwrócone na twoje konto"
+            text = data.email_text
             recipent = data.email
             sender = 'miseczkag@gmail.com'
             return provider_send(provider.name, sender, recipent, text)

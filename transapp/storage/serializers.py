@@ -44,27 +44,27 @@ class WarehouseWorkerSerializer(serializers.ModelSerializer):
         return super().validate(attrs)
 
 
-class WarehouseStatsSerializer(serializers.ModelSerializer):
-    stats = serializers.SerializerMethodField('calculate_stats')
+# class WarehouseStatsSerializer(serializers.ModelSerializer):
+#     stats = serializers.SerializerMethodField('calculate_stats')
 
-    class Meta:
-        model = Warehouse
-        fields = ['name',  'stats']
+#     class Meta:
+#         model = Warehouse
+#         fields = ['name',  'stats']
 
-    def calculate_stats(self, obj):
-        stats = {'num_of_deliver': 0, 'broken_deliver': 0}
-        sum_duration = datetime.timedelta(0)
-        for action in obj.actions.values():
-            stats['num_of_deliver'] += 1
-            if action["status"] == StatusChoice.DELIVERED_BROKEN:
-                stats['broken_deliver'] += 1
-            sum_duration += action['duration']
-        try:
-            stats['average_duration'] = str(
-                sum_duration / stats['num_of_deliver'])
-        except ZeroDivisionError:
-            stats['average_duration'] = None
-        return stats
+#     def calculate_stats(self, obj):
+#         stats = {'num_of_deliver': 0, 'broken_deliver': 0}
+#         sum_duration = datetime.timedelta(0)
+#         for action in obj.actions.values():
+#             stats['num_of_deliver'] += 1
+#             if action["status"] == StatusChoice.DELIVERED_BROKEN:
+#                 stats['broken_deliver'] += 1
+#             sum_duration += action['duration']
+#         try:
+#             stats['average_duration'] = str(
+#                 sum_duration / stats['num_of_deliver'])
+#         except ZeroDivisionError:
+#             stats['average_duration'] = None
+#         return stats
 
 
 class WorkerStatsSerializer(serializers.ModelSerializer):

@@ -51,7 +51,7 @@ class OpenningTime(Time):
         return f"{self.get_weekday_display()} {self.from_hour.strftime('%H:%M')}-{self.to_hour.strftime('%H:%M')}"
 
 
-class ActionWindow(Time): 
+class ActionWindow(Time):
 
     monthday = models.DateField()
     action_type = models.CharField(
@@ -65,15 +65,17 @@ class ActionWindow(Time):
 
 class Action(models.Model):
 
+    action_id = models.UUIDField(default=uuid.uuid4, editable=False)
+    action_type = models.CharField(
+        max_length=255, choices=ActionChoice.choices)
+    date = models.DateTimeField(auto_now_add=True)
     workers = models.ManyToManyField(get_user_model())
     duration = models.DurationField()
     warehouse = models.ForeignKey(
         Warehouse, on_delete=models.CASCADE, related_name='actions')
-    action_type = models.CharField(
-        max_length=255, choices=ActionChoice.choices)
-    action_window = models.OneToOneField(
+    action_window = models.ForeignKey(
         ActionWindow, on_delete=models.CASCADE, related_name='action')
-    transport = models.OneToOneField(
+    transport = models.ForeignKey(
         Transport, on_delete=models.CASCADE, related_name='action')
     status = models.CharField(max_length=25, choices=StatusChoice.choices)
 

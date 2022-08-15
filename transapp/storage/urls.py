@@ -3,8 +3,8 @@ from django.urls import path, include
 from rest_framework import routers
 
 from .views import WarehouseApi, ActionCoordinatorApi, WorkersStatsApi, \
-    AddActionWindonApi, AcceptAction, AcceptBrokenAction, ActionDirectorApi, \
-    WarehouseStatsApi
+    AddActionWindonApi, AcceptAction, ActionDirectorApi, \
+    WarehouseStatsApi, ActionComplainEmail
 
 app_name = 'storage'
 
@@ -23,6 +23,6 @@ urlpatterns = [
     path('', include(router.urls)),
     path('action-approve/<int:pk>/',
          AcceptAction.as_view(), name='action-approve'),
-    path('action-approve-broken/<int:pk>/',
-         AcceptBrokenAction.as_view(), name='action-approve-broken'),
+    path('action-complain-email/<int:pk>/',
+         ActionComplainEmail.as_view(), name='action-complain-email'),
 ]
