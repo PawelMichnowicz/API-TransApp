@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from django.contrib.auth import get_user_model
 
-from .models import Document
+from document.models import Document
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -13,7 +13,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = get_user_model()
-        fields = ['username', 'email', 'password', 'password2']
+        fields = ['email', 'password', 'password2']
 
     def validate(self, data):
         if data['password'] != data['password2']:
@@ -25,8 +25,7 @@ class UserSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        user = get_user_model().objects.create_user(email=self.validated_data['email'],
-                    username=self.validated_data['username'])
+        user = get_user_model().objects.create_user(email=self.validated_data['email'],)
         password = self.validated_data['password']
         user.set_password(password)
         user.save()

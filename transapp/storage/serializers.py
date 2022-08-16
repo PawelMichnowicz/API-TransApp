@@ -72,7 +72,7 @@ class WorkerStatsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = get_user_model()
-        fields = ['username', 'stats']
+        fields = ['email', 'stats']
 
     def calculate_stats(self, obj):
         stats = []

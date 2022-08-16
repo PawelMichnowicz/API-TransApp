@@ -6,7 +6,7 @@ from .models import Warehouse, Action, OpenningTime, ActionWindow
 
 class WorkersInline(admin.StackedInline):
     model = get_user_model()
-    fields = ['username', 'position']
+    fields = ['position']
     raw_id_fields = ['workplace', ]
     max_num = 0
 

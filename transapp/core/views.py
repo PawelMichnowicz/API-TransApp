@@ -10,7 +10,8 @@ from rest_framework import status
 
 from storage.serializers import WarehouseWorkerSerializer
 
-from .models import WorkPosition, Document
+from document.models import  Document
+from .models import WorkPosition
 from .permissions import IsDirector
 from .serializers import UserSerializer, DocumentSerializer
 
@@ -55,7 +56,7 @@ class WorkerDowngradeApi(generics.GenericAPIView):
         user = self.get_object()
         user.workplace = None
         user.save()
-        return Response({'username': user.username, 'position': user.position, 'workplace': user.workplace})
+        return Response({'email': user.email, 'position': user.position, 'workplace': user.workplace})
 
 
 class WorkereCreateApi(mixins.CreateModelMixin,
@@ -69,11 +70,9 @@ class WorkereCreateApi(mixins.CreateModelMixin,
 
         data = request.data.copy()
         password = get_user_model().objects.make_random_password()
-        username = data['email'].split('@')[0] + "_1"
-        while get_user_model().objects.filter(username=username).exists():
-            username = username[:-1] + str(int(username[-1]) + 1)
+        email = data['email']
 
-        data.update({'username':username, 'password':password, 'password2':password})
+        data.update({'email':email, 'password':password, 'password2':password})
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
