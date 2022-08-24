@@ -26,6 +26,7 @@ urlpatterns = [
    path('api/users/', include('core.urls')),
    path('api/transport/', include('transport.urls')),
    path('api/storage/', include('storage.urls')),
+   path('api/document/', include('document.urls')),
    path('', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
    path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
 

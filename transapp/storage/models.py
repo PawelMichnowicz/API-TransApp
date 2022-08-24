@@ -79,5 +79,10 @@ class Action(models.Model):
         Transport, on_delete=models.CASCADE, related_name='action')
     status = models.CharField(max_length=25, choices=StatusChoice.choices)
 
+    class Meta:
+        unique_together = ('action_id', 'status',)
+
     def __str__(self):
-        return f'{str(self.transport)}  {str(self.action_type)}  {str(self.status)}'
+        return f'{str(self.action_type).casefold()}_{str(self.status)}-{str(self.action_id)}'
+
+

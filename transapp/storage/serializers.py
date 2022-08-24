@@ -19,7 +19,7 @@ class ActionWindowSerializer(serializers.ModelSerializer):
                   'to_hour', 'action_type', 'warehouse']
 
 
-class ActionWindowCreateSerializer(serializers.ModelSerializer):
+class ActionWindowOverwriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ActionWindow
@@ -44,37 +44,15 @@ class WarehouseWorkerSerializer(serializers.ModelSerializer):
         return super().validate(attrs)
 
 
-# class WarehouseStatsSerializer(serializers.ModelSerializer):
-#     stats = serializers.SerializerMethodField('calculate_stats')
-
-#     class Meta:
-#         model = Warehouse
-#         fields = ['name',  'stats']
-
-#     def calculate_stats(self, obj):
-#         stats = {'num_of_deliver': 0, 'broken_deliver': 0}
-#         sum_duration = datetime.timedelta(0)
-#         for action in obj.actions.values():
-#             stats['num_of_deliver'] += 1
-#             if action["status"] == StatusChoice.DELIVERED_BROKEN:
-#                 stats['broken_deliver'] += 1
-#             sum_duration += action['duration']
-#         try:
-#             stats['average_duration'] = str(
-#                 sum_duration / stats['num_of_deliver'])
-#         except ZeroDivisionError:
-#             stats['average_duration'] = None
-#         return stats
-
 
 class WorkerStatsSerializer(serializers.ModelSerializer):
-    stats = serializers.SerializerMethodField('calculate_stats')
+    stats = serializers.SerializerMethodField('include_stats')
 
     class Meta:
         model = get_user_model()
         fields = ['email', 'stats']
 
-    def calculate_stats(self, obj):
+    def include_stats(self, obj):
         stats = []
         for action in obj.action_set.values():
             stats.append({
@@ -92,12 +70,10 @@ class OpenningTimeSerializer(serializers.ModelSerializer):
 
 class WarehouseSerializer(serializers.ModelSerializer):
     openning_time = OpenningTimeSerializer(many=True)
-    action_window = ActionWindowCreateSerializer(many=True, required=False)
 
     class Meta:
         model = Warehouse
-        fields = ['pk', 'name', 'action_window',
-                  'openning_time', 'workers']
+        fields = ['pk', 'name', 'openning_time', 'workers']
 
     def validate(self, attrs):
         ''' Validate if valid oppening time provided '''
@@ -137,7 +113,7 @@ class ActionSerializer(serializers.ModelSerializer):
 
 
 class ActionOrderSerializer(serializers.ModelSerializer):
-    orders = serializers.SerializerMethodField()
+    orders = serializers.SerializerMethodField('get_orders')
 
     class Meta:
         model = Action
@@ -147,3 +123,5 @@ class ActionOrderSerializer(serializers.ModelSerializer):
         orders_queryset = obj.transport.orders
         serializer = OrderSerializer(orders_queryset, many=True)
         return serializer.data
+
+

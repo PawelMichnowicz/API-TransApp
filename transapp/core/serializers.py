@@ -32,14 +32,3 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 
-class DocumentSerializer(serializers.ModelSerializer):
-    file_path = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Document
-        fields = ['name', 'file_path']
-
-    def get_file_path(self, obj):
-        return obj.file.path
-
-

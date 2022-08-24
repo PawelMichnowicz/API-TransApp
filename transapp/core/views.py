@@ -13,7 +13,7 @@ from storage.serializers import WarehouseWorkerSerializer
 from document.models import  Document
 from .models import WorkPosition
 from .permissions import IsDirector
-from .serializers import UserSerializer, DocumentSerializer
+from .serializers import UserSerializer
 
 from dotenv import dotenv_values
 
@@ -34,13 +34,6 @@ class RegisterApi(APIView):
         else:
             return Response({"Status": serializer.errors})
 
-
-class DocumentsAPI(mixins.ListModelMixin,
-                   viewsets.GenericViewSet):
-
-    queryset = Document.objects.all()
-    permission_classes = [AllowAny, ]
-    serializer_class = DocumentSerializer
 
 
 class WorkerDowngradeApi(generics.GenericAPIView):

@@ -3,8 +3,8 @@ from rest_framework import routers
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.views import TokenVerifyView
 
-
-from .views import RegisterApi, WorkerDowngradeApi,  DocumentsAPI, WorkereCreateApi
+from document.views import  DocumentsAPI
+from .views import RegisterApi, WorkerDowngradeApi,  WorkereCreateApi
 
 app_name = 'core'
 

@@ -42,6 +42,8 @@ class Order(models.Model):
     transport = models.ForeignKey(Transport, on_delete=models.CASCADE, related_name='orders')
     price = models.DecimalField(max_digits=8, decimal_places=2)
     products = ArrayField(models.IntegerField())
+    broken = models.BooleanField(default=False)
+
 
     def __str__(self):
         return str(self.order_id)
