@@ -10,6 +10,15 @@ class UserAdmin(BaseUserAdmin):
     fieldsets = (
         (None, {'fields': ( 'workplace', 'position', 'email', 'password',)}),
     )
+    add_fieldsets = (
+        (
+            None,
+            {
+                "classes": ("wide",),
+                "fields": ("email", "password1", "password2"),
+            },
+        ),
+    )
     ordering = ['id']
 
 admin.site.register(User, UserAdmin)

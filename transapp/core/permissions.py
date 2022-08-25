@@ -26,8 +26,12 @@ class IsCoordinator(BasePermission):
 class WorkHere(BasePermission):
 
     def has_object_permission(self, request, view, obj):
-        return request.user.workplace == obj or request.user.position == WorkPosition.ADMIN.value
+        return request.user.workplace == obj or request.user.workplace == obj.warehouse or request.user.position == WorkPosition.ADMIN.value
 
+class WorkHereActionObject(BasePermission):
+
+    def has_object_permission(self, request, view, obj):
+        return request.user.workplace == obj.warehouse or request.user.position == WorkPosition.ADMIN.value
 
 class WorkHereActionWindow(BasePermission):
 

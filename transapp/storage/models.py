@@ -1,16 +1,16 @@
 import uuid
-import datetime
+
 from django.db import models
 from django.dispatch import receiver
 from django.db.models import F, Q
 from django.contrib.auth import get_user_model
 from django.db.models.signals import post_save
 
+from core.constants import WorkPosition
+
 from transport.models import Transport
 
-from .constants import StatusChoice
-
-from .constants import WEEKDAYS
+from .constants import StatusChoice, WEEKDAYS
 
 
 class ActionChoice(models.TextChoices):
@@ -28,9 +28,8 @@ class Time(models.Model):
         constraints = [
             models.CheckConstraint(
                 check=Q(from_hour__lt=F('to_hour')),
-                name='%(class)s_check_hours'
-            )
-        ]
+                name='%(class)s_check_hours'),
+            ]
 
 
 class Warehouse(models.Model):
@@ -59,8 +58,9 @@ class ActionWindow(Time):
     warehouse = models.ForeignKey(
         Warehouse, related_name='action_window', on_delete=models.CASCADE)
 
+
     def __str__(self):
-        return f"{self.monthday.strftime('%b%d')} {self.from_hour.strftime('%H:%M')}-{self.to_hour.strftime('%H:%M')}  "
+        return f"{self.monthday.strftime('%b%d')} {self.from_hour.strftime('%H:%M')}-{self.to_hour.strftime('%H:%M')}"
 
 
 class Action(models.Model):
@@ -70,7 +70,7 @@ class Action(models.Model):
         max_length=255, choices=ActionChoice.choices)
     date = models.DateTimeField(auto_now_add=True)
     workers = models.ManyToManyField(get_user_model())
-    duration = models.DurationField()
+    duration = models.DurationField(null=True, blank=True)
     warehouse = models.ForeignKey(
         Warehouse, on_delete=models.CASCADE, related_name='actions')
     action_window = models.ForeignKey(
@@ -81,6 +81,14 @@ class Action(models.Model):
 
     class Meta:
         unique_together = ('action_id', 'status',)
+        constraints = [
+            models.CheckConstraint(
+                check=(Q(status=StatusChoice.DELIVERED, duration__isnull=False)) |
+                      (Q(status=StatusChoice.DELIVERED_BROKEN, duration__isnull=False)) |
+                      (Q(status=StatusChoice.IN_PROGRESS, duration__isnull=True)) ,
+                name='check_duration_correct'
+                )
+            ]
 
     def __str__(self):
         return f'{str(self.action_type).casefold()}_{str(self.status)}-{str(self.action_id)}'

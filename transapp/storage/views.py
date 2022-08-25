@@ -1,25 +1,30 @@
+from binhex import Error
 import json
+from xml.dom import ValidationErr
 import requests
-import xmltodict
 
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.aggregates.general import ArrayAgg
+from django.core.exceptions import ValidationError
 from django.urls import reverse
 from django.db.models import Avg, Count
-from django.db.models import Q
+from django.db.models import Q, F
 from django.db.utils import IntegrityError
 
 from rest_framework import generics, mixins, viewsets, status, serializers
 from rest_framework.response import Response
 
-from core.permissions import IsDirector, IsAdmin, WorkHere, IsCoordinator, WorkHereActionWindow
+from core.permissions import IsDirector, IsAdmin, WorkHere, IsCoordinator, WorkHereActionWindow, WorkHereActionObject
 from core.models import WorkPosition
 from core.functions import send_email
 
+from transport.models import Order
+
 from storage.models import OpenningTime, Warehouse, Action, ActionWindow
 from storage.serializers import ActionOrderSerializer, OpenningTimeSerializer, WarehouseSerializer, ActionSerializer, ActionWindowSerializer
-from .serializers import WarehouseSerializer, WorkerStatsSerializer, ActionWindowOverwriteSerializer
-from .constants import StatusChoice, BROKEN_ORDER_TEXT, BROKEN_ORDERS_TEXT, SEND_EMAIL_URL
+from storage.serializers import WarehouseSerializer, WorkerStatsSerializer, ActionWindowOverwriteSerializer, ActionAcceptSerializer
+from storage.constants import StatusChoice, BROKEN_ORDER_TEXT, BROKEN_ORDERS_TEXT, SEND_EMAIL_URL
+from storage.functions import validate_action_window_date
 
 
 class WorkersStatsApi(mixins.ListModelMixin,
@@ -87,6 +92,7 @@ class WarehouseApi(mixins.CreateModelMixin,
         instance.save()
 
 
+
 class OverwriteActionWindowApi(generics.GenericAPIView):
 
     queryset = Warehouse.objects.all()
@@ -100,6 +106,7 @@ class OverwriteActionWindowApi(generics.GenericAPIView):
             action_window['warehouse'] = instance.pk
             serializer = self.get_serializer(data=action_window)
             serializer.is_valid(raise_exception=True)
+            validate_action_window_date(serializer, warehouse=instance)
             serializer.save()
         return Response(instance.action_window.values(), status=201)
 
@@ -109,6 +116,13 @@ class AddActionWindonApi(mixins.CreateModelMixin,
 
     permission_classes = [IsDirector, WorkHereActionWindow]
     serializer_class = ActionWindowSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.validated_data['warehouse']
+        validate_action_window_date(serializer, warehouse=instance)
+        return super().create(request, *args, **kwargs)
 
 
 class ActionDirectorApi(mixins.RetrieveModelMixin,
@@ -130,6 +144,7 @@ class ActionCoordinatorApi(mixins.RetrieveModelMixin,
     serializer_class = ActionSerializer
     permission_classes = [IsCoordinator, ]
 
+
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
         data = {}
@@ -146,37 +161,49 @@ class ActionCoordinatorApi(mixins.RetrieveModelMixin,
         return self.serializer_class
 
 
+
 class AcceptAction(generics.GenericAPIView):
 
     queryset = Action.objects.filter(status=StatusChoice.IN_PROGRESS)
-    permission_classes = [IsCoordinator]
+    permission_classes = [IsCoordinator, WorkHereActionObject]
+    serializer_class = ActionAcceptSerializer
 
     def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         instance = self.get_object()
         instance.pk = None
+
         if not request.data['broken_orders']:
             instance.status = StatusChoice.DELIVERED
         else:
             instance.status = StatusChoice.DELIVERED_BROKEN
-            for order_id in request.data['broken_orders']:
-                order = instance.transport.orders.get(order_id=order_id)
+            for broken_order in request.data['broken_orders']:
+                try:
+                    order = instance.transport.orders.get(order_id=broken_order['order_id'])
+                except ValidationError as error:
+                    raise serializers.ValidationError(error)
+                except Order.DoesNotExist as error:
+                    raise serializers.ValidationError('order_id_{} {}'.format(broken_order['order_id'], error))
                 order.broken = True
                 order.save()
 
+        instance.duration = serializer.validated_data['duration']
         try:
             instance.save()
-        except IntegrityError:
-            return Response({'message':'Action with this id is already accepted'},status=status.HTTP_409_CONFLICT)
+        except IntegrityError as error:
+            return Response({'message':f'Action with this id and status is already accepted: {error}'}, status=status.HTTP_409_CONFLICT)
+        for worker in serializer.validated_data['workers']:
+            instance.workers.add(worker)
 
+        response_api = ActionSerializer(instance=instance).data
         if instance.status == StatusChoice.DELIVERED_BROKEN:
             url = "http://api:8000" + reverse('storage:action-complain-email', args=[instance.pk])
             response_email = requests.post(url=url, data={'provider':'GmailProvider'}, headers={'Authorization': 'Bearer '+str(request.auth)}).text
             response_email = json.loads(response_email)
-            response_api = ActionSerializer(instance=instance).data
             response_api.update(response_email)
 
         return Response(response_api)
-
 
 
 class ActionComplainEmail(generics.GenericAPIView):

@@ -7,8 +7,7 @@ from transport.serializers import TransportSerializer, OrderSerializer
 from storage.constants import StatusChoice
 
 from .models import OpenningTime, ActionWindow, Warehouse, Action
-
-import datetime
+from transport.models import Order
 
 
 class ActionWindowSerializer(serializers.ModelSerializer):
@@ -124,4 +123,18 @@ class ActionOrderSerializer(serializers.ModelSerializer):
         serializer = OrderSerializer(orders_queryset, many=True)
         return serializer.data
 
+
+class BrokenOrdersSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Order
+        fields = ['order_id']
+
+
+class ActionAcceptSerializer(serializers.ModelSerializer):
+    broken_orders = BrokenOrdersSerializer(many=True, required=False)
+
+    class Meta:
+        model = Action
+        fields = ['broken_orders', 'duration', 'workers']
 
