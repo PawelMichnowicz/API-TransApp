@@ -1,35 +1,38 @@
-from binhex import Error
+'''
+Views for the storage API
+'''
 import json
-from xml.dom import ValidationErr
 import requests
 
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.aggregates.general import ArrayAgg
 from django.core.exceptions import ValidationError
-from django.urls import reverse
-from django.db.models import Avg, Count
-from django.db.models import Q, F
+from django.db.models import Avg, Count, Q
 from django.db.utils import IntegrityError
+from django.urls import reverse
 
-from rest_framework import generics, mixins, viewsets, status, serializers
+from rest_framework import generics, mixins, serializers, status, viewsets
 from rest_framework.response import Response
 
-from core.permissions import IsDirector, IsAdmin, WorkHere, IsCoordinator, WorkHereActionWindow, WorkHereActionObject
-from core.models import WorkPosition
-from core.functions import send_email
-
 from transport.models import Order
+from core.constants import WorkPosition
+from core.functions import send_email
+from core.permissions import (IsAdmin, IsCoordinator, IsDirector, WorkHere,
+                              WorkHereActionObject, WorkHereActionWindow)
 
-from storage.models import OpenningTime, Warehouse, Action, ActionWindow
-from storage.serializers import ActionOrderSerializer, OpenningTimeSerializer, WarehouseSerializer, ActionSerializer, ActionWindowSerializer
-from storage.serializers import WarehouseSerializer, WorkerStatsSerializer, ActionWindowOverwriteSerializer, ActionAcceptSerializer
-from storage.constants import StatusChoice, BROKEN_ORDER_TEXT, BROKEN_ORDERS_TEXT, SEND_EMAIL_URL
+from storage.constants import (BROKEN_ORDER_TEXT, BROKEN_ORDERS_TEXT,
+                               SEND_EMAIL_URL, StatusChoice)
 from storage.functions import validate_action_window_date
+from storage.models import Action, Warehouse
+from storage.serializers import (ActionAcceptSerializer, ActionOrderSerializer,
+                                 ActionSerializer, ActionWindowSerializer,
+                                 OpenningTimeSerializer, WarehouseSerializer,
+                                 WorkerStatsSerializer)
 
 
 class WorkersStatsApi(mixins.ListModelMixin,
                       viewsets.GenericViewSet):
-
+    ''' View for warehousers stats '''
     queryset = get_user_model().objects.filter(
         position=WorkPosition.WAREHOUSER.value).all()
     permission_classes = [IsDirector, ]
@@ -38,12 +41,13 @@ class WorkersStatsApi(mixins.ListModelMixin,
 
 class WarehouseStatsApi(mixins.RetrieveModelMixin,
                         viewsets.GenericViewSet):
-
+    ''' View for warehouse stats '''
     permission_classes = [IsCoordinator, WorkHere]
     serializer_class = WarehouseSerializer
     queryset = Warehouse.objects.all()
 
     def retrieve(self, request, *args, **kwargs):
+        ''' Calculate stats for warehouse '''
         instance = self.get_object()
         duration = instance.actions.aggregate(Avg('duration'))["duration__avg"]
         total_actions = instance.actions.aggregate(Count('pk'))["pk__count"]
@@ -63,7 +67,7 @@ class WarehouseApi(mixins.CreateModelMixin,
                    mixins.ListModelMixin,
                    mixins.DestroyModelMixin,
                    viewsets.GenericViewSet):
-
+    ''' View for CRUD warehouse model'''
     queryset = Warehouse.objects.all()
     serializer_class = WarehouseSerializer
     permission_classes = [IsAdmin, ]
@@ -94,12 +98,13 @@ class WarehouseApi(mixins.CreateModelMixin,
 
 
 class OverwriteActionWindowApi(generics.GenericAPIView):
-
+    ''' View for overwrite action window field in warehouse model '''
     queryset = Warehouse.objects.all()
     serializer_class = ActionWindowSerializer
     permission_classes = [IsAdmin]
 
     def post(self, request, *args, **kwargs):
+        ''' Iterate after action windows and adding each for warehouse model'''
         instance = self.get_object()
         instance.action_window.all().delete()
         for action_window in request.data['action_windows']:
@@ -113,11 +118,12 @@ class OverwriteActionWindowApi(generics.GenericAPIView):
 
 class AddActionWindonApi(mixins.CreateModelMixin,
                          viewsets.GenericViewSet):
-
+    ''' View for add extra action window to warehouse model '''
     permission_classes = [IsDirector, WorkHereActionWindow]
     serializer_class = ActionWindowSerializer
 
     def create(self, request, *args, **kwargs):
+        ''' Validate action window from request '''
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         instance = serializer.validated_data['warehouse']
@@ -128,34 +134,36 @@ class AddActionWindonApi(mixins.CreateModelMixin,
 class ActionDirectorApi(mixins.RetrieveModelMixin,
                         mixins.ListModelMixin,
                         viewsets.GenericViewSet):
-
+    ''' View for action for director '''
     permission_classes = [IsDirector, ]
     serializer_class = ActionSerializer
 
     def get_queryset(self):
+        ''' Filter action to get only those from director's warehouse '''
         return Action.objects.filter(warehouse=self.request.user.workplace)
 
 
 class ActionCoordinatorApi(mixins.RetrieveModelMixin,
                            mixins.ListModelMixin,
                            viewsets.GenericViewSet):
-
+    ''' View for action for director '''
     queryset = Action.objects.all()
     serializer_class = ActionSerializer
     permission_classes = [IsCoordinator, ]
 
 
     def list(self, request, *args, **kwargs):
+        ''' Group by actions by delivery status '''
         queryset = self.get_queryset()
         data = {}
         for unique in queryset.values('status').distinct():
             status_queryset = queryset.filter(Q(status=unique['status']))
             serializer = self.get_serializer(status_queryset, many=True)
             data[unique['status']] = serializer.data
-            # qs.annotate(broken=F('pk', filter=Q(pk=1))).values('broken')
         return Response(data)
 
     def get_serializer_class(self):
+        ''' Use another serializer for retrive action '''
         if self.action == 'retrieve':
             return ActionOrderSerializer
         return self.serializer_class
@@ -163,12 +171,18 @@ class ActionCoordinatorApi(mixins.RetrieveModelMixin,
 
 
 class AcceptAction(generics.GenericAPIView):
-
+    ''' View for accept incoming deliver to warehouse '''
     queryset = Action.objects.filter(status=StatusChoice.IN_PROGRESS)
     permission_classes = [IsCoordinator, WorkHereActionObject]
     serializer_class = ActionAcceptSerializer
 
     def post(self, request, *args, **kwargs):
+        '''
+        Set action pk as None to create duplicate model with modifed some fields
+        Set action status as "delivered" or "delivered_broken" depends on provided request data
+        Add duration and workers field into instance
+        If status set as "delivered_broke" send email by ActionComplanEmail View
+        '''
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         instance = self.get_object()
@@ -207,11 +221,12 @@ class AcceptAction(generics.GenericAPIView):
 
 
 class ActionComplainEmail(generics.GenericAPIView):
-
+    ''' View for sending email about broken orders for buyers '''
     queryset = Action.objects.filter(status=StatusChoice.DELIVERED_BROKEN)
     permission_classes = [IsCoordinator]
 
     def post(self, request, *args, **kwargs):
+        ''' Prepare request data and use them in send_email microservice and add response from there '''
         instance = self.get_object()
         api_response = {'email_messages':[], 'email_errors':[]}
         broken_orders = instance.transport.orders.filter(broken=True)

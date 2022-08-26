@@ -1,6 +1,8 @@
+'''
+Views for the core API
+'''
 from django.contrib.auth import get_user_model
-from django.http import HttpResponse
-import jwt
+
 
 from rest_framework import generics, mixins, viewsets, serializers
 from rest_framework.views import APIView
@@ -8,10 +10,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from rest_framework import status
 
-from storage.serializers import WarehouseWorkerSerializer
-
-from document.models import  Document
-from .models import WorkPosition
+from .constants import WorkPosition
 from .permissions import IsDirector
 from .serializers import UserSerializer
 
@@ -24,6 +23,7 @@ ALG = env_var['ALG']
 
 
 class RegisterApi(APIView):
+    ''' Create new user '''
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -37,7 +37,7 @@ class RegisterApi(APIView):
 
 
 class WorkerDowngradeApi(generics.GenericAPIView):
-
+    ''' View for remove user-warehouser from warehouse'''
     class EmptySerializer(serializers.Serializer):
         pass
 
@@ -46,6 +46,7 @@ class WorkerDowngradeApi(generics.GenericAPIView):
     serializer_class = EmptySerializer
 
     def post(self, request, pk, format=None):
+        ''' get user object and set workplace as None'''
         user = self.get_object()
         user.workplace = None
         user.save()
@@ -54,13 +55,13 @@ class WorkerDowngradeApi(generics.GenericAPIView):
 
 class WorkereCreateApi(mixins.CreateModelMixin,
                       viewsets.GenericViewSet):
-
+    ''' View for create new account for warehouser using email'''
     queryset = get_user_model()
     permission_classes = [IsDirector, ]
     serializer_class = UserSerializer
 
     def create(self, request, *args, **kwargs):
-
+        ''' generate password and create new account using email from request '''
         data = request.data.copy()
         password = get_user_model().objects.make_random_password()
         email = data['email']

@@ -1,23 +1,20 @@
-from rest_framework import viewsets, mixins
-from rest_framework.views import APIView
+'''
+Views for the storage API
+'''
+from rest_framework import mixins, viewsets
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from .serializers import VehicleSerializer, RouteSerializer, TransportSerializer
-from .serializers import VehicleSerializer, RouteSerializer
-from .models import Vehicle, Route, Transport
+from core.permissions import IsDirector
 
-from core.permissions import IsDirector, IsCoordinator
-
-
-class TestApi(APIView):
-    def get(self, request):
-        return Response({"postion": request.user.position})
-
+from .models import Route, Transport, Vehicle
+from .serializers import (RouteSerializer, TransportSerializer,
+                          VehicleSerializer)
 
 class VehicleApi(mixins.RetrieveModelMixin,
                  mixins.ListModelMixin,
                  viewsets.GenericViewSet):
-
+    ''' View for get list or retrive vehicle model '''
     queryset = Vehicle.objects.all()
     serializer_class = VehicleSerializer
     permission_classes = [IsDirector, ]
@@ -26,7 +23,7 @@ class VehicleApi(mixins.RetrieveModelMixin,
 class RouteApi(mixins.RetrieveModelMixin,
                mixins.ListModelMixin,
                viewsets.GenericViewSet):
-
+    ''' View for get list or retrive route model '''
     queryset = Route.objects.all()
     serializer_class = RouteSerializer
     permission_classes = [IsDirector, ]
@@ -35,14 +32,9 @@ class RouteApi(mixins.RetrieveModelMixin,
 class TransportApi(mixins.RetrieveModelMixin,
                    mixins.ListModelMixin,
                    viewsets.GenericViewSet):
-
+    ''' View for get list or retrive transport model '''
     queryset = Transport.objects.all()
     serializer_class = TransportSerializer
     permission_classes = [IsDirector,]
 
 
-
-    # def get_serializer_class(self):
-    #     if self.action == 'list':
-    #         return TransportSerializer
-    #     return self.serializer_class

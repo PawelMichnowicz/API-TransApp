@@ -1,12 +1,11 @@
+'''
+Models for storage APIs
+'''
 import uuid
 
 from django.db import models
-from django.dispatch import receiver
 from django.db.models import F, Q
 from django.contrib.auth import get_user_model
-from django.db.models.signals import post_save
-
-from core.constants import WorkPosition
 
 from transport.models import Transport
 
@@ -14,16 +13,18 @@ from .constants import StatusChoice, WEEKDAYS
 
 
 class ActionChoice(models.TextChoices):
+    ''' Choices for type of action '''
     SEND = 'send', 'Send'
     RECEIVE = 'receive', 'Receive'
 
 
 class Time(models.Model):
-
+    ''' Base model for models using time '''
     from_hour = models.TimeField()
     to_hour = models.TimeField()
 
     class Meta:
+        ''' Set model as abstract and check if hours are correct '''
         abstract = True
         constraints = [
             models.CheckConstraint(
@@ -33,7 +34,7 @@ class Time(models.Model):
 
 
 class Warehouse(models.Model):
-
+    ''' Warehouse model '''
     name = models.CharField(max_length=255, unique=True)
 
     def __str__(self):
@@ -41,7 +42,7 @@ class Warehouse(models.Model):
 
 
 class OpenningTime(Time):
-
+    ''' Openning hours model '''
     weekday = models.IntegerField(choices=WEEKDAYS)
     warehouse = models.ForeignKey(
         Warehouse, on_delete=models.CASCADE, related_name='openning_time')
@@ -51,7 +52,7 @@ class OpenningTime(Time):
 
 
 class ActionWindow(Time):
-
+    ''' Action window model which represent possible time for warehouse action '''
     monthday = models.DateField()
     action_type = models.CharField(
         max_length=255, choices=ActionChoice.choices)
@@ -64,7 +65,7 @@ class ActionWindow(Time):
 
 
 class Action(models.Model):
-
+    ''' Action model which represent receive or send deliver from warehouse '''
     action_id = models.UUIDField(default=uuid.uuid4, editable=False)
     action_type = models.CharField(
         max_length=255, choices=ActionChoice.choices)
@@ -80,6 +81,7 @@ class Action(models.Model):
     status = models.CharField(max_length=25, choices=StatusChoice.choices)
 
     class Meta:
+        ''' check if duration field is only in delivered and delivered broken status'''
         unique_together = ('action_id', 'status',)
         constraints = [
             models.CheckConstraint(

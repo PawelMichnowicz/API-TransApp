@@ -4,7 +4,7 @@ from django.urls import reverse
 
 from rest_framework import status
 from rest_framework.test import APIClient
-from core.models import WorkPosition
+from core.constants import WorkPosition
 
 from transport.models import Route, Vehicle, Transport
 from transport.serializers import RouteSerializer, VehicleSerializer, TransportSerializer,\

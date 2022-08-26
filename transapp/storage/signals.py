@@ -1,18 +1,14 @@
-from django.db.models.signals import post_save
+"""
+Signals for storage APIs
+"""
 from django.db.models.signals import m2m_changed
 from django.dispatch import receiver
-from django.urls import reverse
 from storage.models import Action
-from .constants import StatusChoice
-from core.models import WorkPosition
-
-@receiver(post_save, sender=Action)
-def my_callback(sender, instance, created, **kwargs):
-    if instance.status == StatusChoice.DELIVERED_BROKEN and created:
-        print(reverse('storage:action-complain-email', args=[instance.pk])) # brak możliwości dodania wiadomości do responsa
+from core.constants import WorkPosition
 
 @receiver(m2m_changed, sender=Action.workers.through)
 def check_workers_position(sender, instance, action, *args, **kwargs):
+    ''' Signal that check if all workers in warehouse have warehouser position '''
     if action=="pre_add":
-        xd = [worker.position==WorkPosition.WAREHOUSER for worker in instance.workers.all()]
-        return all(xd)
+        is_warehouser = [worker.position==WorkPosition.WAREHOUSER for worker in instance.workers.all()]
+        return all(is_warehouser)

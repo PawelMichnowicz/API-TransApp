@@ -1,50 +1,26 @@
+"""
+Serializers for storage APIs
+"""
 from rest_framework import serializers
 
 from django.contrib.auth import get_user_model
 
 from transport.serializers import TransportSerializer, OrderSerializer
 
-from storage.constants import StatusChoice
-
 from .models import OpenningTime, ActionWindow, Warehouse, Action
 from transport.models import Order
 
 
 class ActionWindowSerializer(serializers.ModelSerializer):
-
+    ''' Serializer for action window views '''
     class Meta:
         model = ActionWindow
         fields = ['monthday', 'from_hour',
                   'to_hour', 'action_type', 'warehouse']
 
 
-class ActionWindowOverwriteSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = ActionWindow
-        fields = ['monthday', 'from_hour', 'to_hour', 'action_type']
-
-
-class WarehouseWorkerSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = get_user_model()
-        fields = ['email', 'workplace']
-
-    def validate(self, attrs):
-
-        if not 'email' in attrs or not 'workplace' in attrs:
-            raise serializers.ValidationError(
-                'You have to provide email and workplace')
-
-        if get_user_model().objects.filter(email=attrs['email']).exists():
-            raise serializers.ValidationError('Email is already in use')
-
-        return super().validate(attrs)
-
-
-
 class WorkerStatsSerializer(serializers.ModelSerializer):
+    ''' Serializer for worker stats view '''
     stats = serializers.SerializerMethodField('include_stats')
 
     class Meta:
@@ -52,6 +28,7 @@ class WorkerStatsSerializer(serializers.ModelSerializer):
         fields = ['email', 'stats']
 
     def include_stats(self, obj):
+        ''' Add warehouser stats into field '''
         stats = []
         for action in obj.action_set.values():
             stats.append({
@@ -60,7 +37,7 @@ class WorkerStatsSerializer(serializers.ModelSerializer):
 
 
 class OpenningTimeSerializer(serializers.ModelSerializer):
-
+    ''' Serializer for openning time views '''
     class Meta:
         model = OpenningTime
         fields = ['weekday', 'from_hour', 'to_hour', 'warehouse']
@@ -68,6 +45,7 @@ class OpenningTimeSerializer(serializers.ModelSerializer):
 
 
 class WarehouseSerializer(serializers.ModelSerializer):
+    ''' Serializer for warehouse views '''
     openning_time = OpenningTimeSerializer(many=True)
 
     class Meta:
@@ -103,6 +81,7 @@ class WarehouseSerializer(serializers.ModelSerializer):
 
 
 class ActionSerializer(serializers.ModelSerializer):
+    ''' Serializer for Actions '''
     transport = TransportSerializer(read_only=True)
 
     class Meta:
@@ -112,6 +91,7 @@ class ActionSerializer(serializers.ModelSerializer):
 
 
 class ActionOrderSerializer(serializers.ModelSerializer):
+    ''' Serializer for detail about order in action '''
     orders = serializers.SerializerMethodField('get_orders')
 
     class Meta:
@@ -119,19 +99,21 @@ class ActionOrderSerializer(serializers.ModelSerializer):
         fields = ['pk', 'orders']
 
     def get_orders(self, obj):
+        ''' add infomation about orderd into field '''
         orders_queryset = obj.transport.orders
         serializer = OrderSerializer(orders_queryset, many=True)
         return serializer.data
 
 
 class BrokenOrdersSerializer(serializers.ModelSerializer):
-
+    ''' Helper serializer to create nested serializerr '''
     class Meta:
         model = Order
         fields = ['order_id']
 
 
 class ActionAcceptSerializer(serializers.ModelSerializer):
+    ''' Serializer for accept action view '''
     broken_orders = BrokenOrdersSerializer(many=True, required=False)
 
     class Meta:

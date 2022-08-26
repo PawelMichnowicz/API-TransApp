@@ -1,12 +1,16 @@
+'''
+Django command to wait for the database to be available.
+'''
+import time
+
 from django.core.management.base import BaseCommand
-import time 
 
 class Command(BaseCommand):
-
-    
+    '''Django command to wait for database.'''
     def handle(self, *args, **options):
+        ''' '''
         while True:
-            try: 
+            try:
                 self.check(databases=['default'])
                 self.stdout.write('DATABASE IS READY')
                 break

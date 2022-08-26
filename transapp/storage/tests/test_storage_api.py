@@ -16,7 +16,7 @@ from storage.models import ActionChoice
 from storage.models import Warehouse, Action, ActionWindow
 from storage.serializers import WorkerStatsSerializer, ActionSerializer, WarehouseSerializer, ActionOrderSerializer, ActionWindowSerializer
 
-from core.models import WorkPosition
+from core.constants import WorkPosition
 
 from collections import OrderedDict
 
