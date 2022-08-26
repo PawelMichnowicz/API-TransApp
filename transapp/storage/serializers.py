@@ -1,14 +1,13 @@
 """
 Serializers for storage APIs
 """
+from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from django.contrib.auth import get_user_model
-
-from transport.serializers import TransportSerializer, OrderSerializer
-
-from .models import OpenningTime, ActionWindow, Warehouse, Action
 from transport.models import Order
+from transport.serializers import OrderSerializer, TransportSerializer
+
+from .models import Action, ActionWindow, OpenningTime, Warehouse
 
 
 class ActionWindowSerializer(serializers.ModelSerializer):

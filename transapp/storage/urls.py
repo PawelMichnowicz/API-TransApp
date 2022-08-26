@@ -1,12 +1,13 @@
 """
 URL mappings for the storage API
 """
-from django.urls import path, include
+from django.urls import include, path
 from rest_framework import routers
 
-from .views import WarehouseApi, ActionCoordinatorApi, WorkersStatsApi, \
-    AddActionWindonApi, AcceptAction, ActionDirectorApi, \
-    WarehouseStatsApi, ActionComplainEmail, OverwriteActionWindowApi
+from .views import (AcceptAction, ActionComplainEmail, ActionCoordinatorApi,
+                    ActionDirectorApi, AddActionWindonApi,
+                    OverwriteActionWindowApi, WarehouseApi, WarehouseStatsApi,
+                    WorkersStatsApi)
 
 app_name = 'storage'
 

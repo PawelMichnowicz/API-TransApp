@@ -2,14 +2,13 @@
 Views for the storage API
 '''
 from rest_framework import mixins, viewsets
-from rest_framework.response import Response
-from rest_framework.views import APIView
 
 from core.permissions import IsDirector
 
 from .models import Route, Transport, Vehicle
 from .serializers import (RouteSerializer, TransportSerializer,
                           VehicleSerializer)
+
 
 class VehicleApi(mixins.RetrieveModelMixin,
                  mixins.ListModelMixin,

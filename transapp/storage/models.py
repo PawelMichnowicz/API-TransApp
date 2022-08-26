@@ -3,13 +3,13 @@ Models for storage APIs
 '''
 import uuid
 
+from django.contrib.auth import get_user_model
 from django.db import models
 from django.db.models import F, Q
-from django.contrib.auth import get_user_model
 
 from transport.models import Transport
 
-from .constants import StatusChoice, WEEKDAYS
+from .constants import WEEKDAYS, StatusChoice
 
 
 class ActionChoice(models.TextChoices):
