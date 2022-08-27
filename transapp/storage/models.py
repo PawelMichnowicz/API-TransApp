@@ -6,6 +6,7 @@ import uuid
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.db.models import F, Q
+from django.core.exceptions import ValidationError
 
 from transport.models import Transport
 
@@ -59,7 +60,6 @@ class ActionWindow(Time):
     warehouse = models.ForeignKey(
         Warehouse, related_name='action_window', on_delete=models.CASCADE)
 
-
     def __str__(self):
         return f"{self.monthday.strftime('%b%d')} {self.from_hour.strftime('%H:%M')}-{self.to_hour.strftime('%H:%M')}"
 
@@ -70,27 +70,34 @@ class Action(models.Model):
     action_type = models.CharField(
         max_length=255, choices=ActionChoice.choices)
     date = models.DateTimeField(auto_now_add=True)
-    workers = models.ManyToManyField(get_user_model())
+    workers = models.ManyToManyField(get_user_model(), blank=True)
     duration = models.DurationField(null=True, blank=True)
     warehouse = models.ForeignKey(
-        Warehouse, on_delete=models.CASCADE, related_name='actions')
+        Warehouse, on_delete=models.CASCADE, related_name='actions', null=True, blank=True)
     action_window = models.ForeignKey(
-        ActionWindow, on_delete=models.CASCADE, related_name='action')
+        ActionWindow, on_delete=models.CASCADE, related_name='action', null=True, blank=True)
     transport = models.ForeignKey(
         Transport, on_delete=models.CASCADE, related_name='action')
     status = models.CharField(max_length=25, choices=StatusChoice.choices)
 
+
     class Meta:
-        ''' check if duration field is only in delivered and delivered broken status'''
+        ''' check if each action has the appropriate fields included '''
         unique_together = ('action_id', 'status',)
         constraints = [
             models.CheckConstraint(
                 check=(Q(status=StatusChoice.DELIVERED, duration__isnull=False)) |
                       (Q(status=StatusChoice.DELIVERED_BROKEN, duration__isnull=False)) |
-                      (Q(status=StatusChoice.IN_PROGRESS, duration__isnull=True)) ,
-                name='check_duration_correct'
+                      (Q(status=StatusChoice.IN_PROGRESS, duration__isnull=True)) |
+                      (Q(status=StatusChoice.UNREADY, duration__isnull=True, warehouse__isnull=True)) ,
+                name='check_status_correct'
                 )
             ]
+
+    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
+        if (self.status==StatusChoice.UNREADY or self.status==StatusChoice.IN_PROGRESS) and self.workers.exists():
+            raise ValidationError('This action cannot contain workers')
+        return super().save(force_insert, force_update, using, update_fields)
 
     def __str__(self):
         return f'{str(self.action_type).casefold()}_{str(self.status)}-{str(self.action_id)}'

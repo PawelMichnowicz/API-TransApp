@@ -22,17 +22,16 @@ class ActionsInline(admin.StackedInline):
     raw_id_fields = ['warehouse', ]
     max_num = 0
 
-class ActionWindowInLine(admin.StackedInline):
-    ''' Inline using for display information about action window in warehouse admin panel '''
-    model = ActionWindow
-    fields = ['monthday', 'from_hour', 'to_hour']
-    raw_id_fields = ['warehouse', ]
-    max_num = 0
-
 class OpenningTimeInLine(admin.StackedInline):
     ''' Inline using for display information about openinng time in warehouse admin panel '''
     model = OpenningTime
     fields = ['weekday', 'from_hour', 'to_hour']
+    raw_id_fields = ['warehouse', ]
+    max_num = 0
+
+class ActionWindowInLine(admin.StackedInline):
+    model = ActionWindow
+    fields = ['monthday', 'from_hour', 'to_hour']
     raw_id_fields = ['warehouse', ]
     max_num = 0
 
@@ -41,7 +40,7 @@ class OpenningTimeInLine(admin.StackedInline):
 class WarehouseAdmin(admin.ModelAdmin):
     ''' Define admin panel for warehouse model '''
     list_display = ['pk', '__str__']
-    inlines = [WorkersInline, ActionsInline, ActionWindowInLine, OpenningTimeInLine]
+    inlines = [OpenningTimeInLine, ActionsInline, ActionWindowInLine, WorkersInline ]
 
 
 @admin.register(Action)

@@ -15,7 +15,7 @@ class ActionWindowSerializer(serializers.ModelSerializer):
     class Meta:
         model = ActionWindow
         fields = ['monthday', 'from_hour',
-                  'to_hour', 'action_type', 'warehouse']
+                  'to_hour',]
 
 
 class WorkerStatsSerializer(serializers.ModelSerializer):
@@ -85,7 +85,7 @@ class ActionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Action
-        fields = ['pk', 'status', 'transport', 'action_type',
+        fields = ['pk', 'action_id', 'status', 'transport', 'action_type',
                   'workers', 'duration', 'warehouse']
 
 
@@ -111,11 +111,27 @@ class BrokenOrdersSerializer(serializers.ModelSerializer):
         fields = ['order_id']
 
 
-class ActionAcceptSerializer(serializers.ModelSerializer):
+class ActionDeliverySerializer(serializers.ModelSerializer):
     ''' Serializer for accept action view '''
     broken_orders = BrokenOrdersSerializer(many=True, required=False)
 
     class Meta:
         model = Action
         fields = ['broken_orders', 'duration', 'workers']
+
+
+class ActionInProgressSerializer(serializers.ModelSerializer):
+    ''' Serializer for accept action view '''
+
+    class Meta:
+        model = Action
+        fields = ['action_window', 'warehouse' ]
+
+    def validate(self, attrs):
+        if attrs['action_window'].warehouse!=attrs['warehouse']:
+            raise serializers.ValidationError('action window cosnider another instance of warehouse')
+        return super().validate(attrs)
+
+
+
 

@@ -6,10 +6,10 @@ import xmltodict
 
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from rest_framework import viewsets, mixins, generics
+from rest_framework import viewsets, mixins, generics, serializers
 
-from .models import Document
-from .serializers import DocumentSerializer, NipSerializer
+from document.models import Document, Contractor
+from document.serializers import DocumentSerializer, NipSerializer, ContractorSerializer
 from .constants import WSDL_URL, GUS_KEY
 
 
@@ -20,6 +20,24 @@ class DocumentsAPI(mixins.ListModelMixin,
     permission_classes = [AllowAny, ]
     serializer_class = DocumentSerializer
 
+GUS_FIELDS_MAP = {
+    "Regon": "regon",
+    "Nip": "nip",
+    "StatusNip": "status_nip",
+    "Nazwa": "nazwa",
+    "Wojewodztwo": "province",
+    "Powiat": "district",
+    "Gmina": "commune",
+    "Miejscowosc": "city",
+    "KodPocztowy": "zip_code",
+    "Ulica": "street",
+    "NrNieruchomosci": "street_number",
+    "NrLokalu": "apartment_number",
+    "Typ": "type",
+    "SilosID": "silos_id",
+    "DataZakonczeniaDzialalnosci": "end_date_activity",
+    "MiejscowoscPoczty": "city_post"
+}
 
 class CheckCompany(generics.GenericAPIView):
     ''' View for get company information from GUS using NIP '''
@@ -34,11 +52,20 @@ class CheckCompany(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         nip = serializer.validated_data['Nip']
-        with client.settings(extra_http_headers={"sid": key_sid}):
-            result = client.service.DaneSzukajPodmioty({'Nip': nip})
-            xmlpars = xmltodict.parse(result)
+        existed_instance = Contractor.objects.filter(nip=nip)
+        if existed_instance.exists():
+            return Response(ContractorSerializer(instance=existed_instance[0]).data)
 
-        return Response(xmlpars['root'])
+        with client.settings(extra_http_headers={"sid": key_sid}):
+            xml_data = client.service.DaneSzukajPodmioty({'Nip': nip})
+        dict_data = xmltodict.parse(xml_data)['root']['dane']
+        if dict_data['ErrorMessageEn']:
+            return Response(dict_data['ErrorMessageEn'], status=404)
+        data = {GUS_FIELDS_MAP[field]: value for field,value in dict_data.items()}
+        serializer = ContractorSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
 
 

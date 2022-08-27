@@ -22,18 +22,17 @@ from collections import OrderedDict
 
 
 DEFAULT_USER_PARAMS = {
-    'username': 'user_',
+    'email': 'eeelo@example.com',
     'password': '123',
     'position': "USR",
     'workplace': None,
-    'email': 'eeelo@wp.pl',
 }
 
 
 def create_worker(**params):
 
     defaults = DEFAULT_USER_PARAMS.copy()
-    defaults.update({'username': 'user_' + get_random_string(length=5)})
+    defaults.update({'email': 'mail_' + get_random_string(length=5) + '@example.com'})
     defaults.update(**params)
     return get_user_model().objects.create_user(**defaults)
 
