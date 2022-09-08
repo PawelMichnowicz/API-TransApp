@@ -13,13 +13,11 @@ app_name = 'storage'
 
 router = routers.SimpleRouter()
 router.register('warehouses', WarehouseApi)
-router.register('warehouse-stats', WarehouseStatsApi,
-                basename='warehouse-stats')
-router.register('actions-for-coordinator', ActionCoordinatorApi)
-router.register('actions-for-director', ActionDirectorApi, basename='actions')
+router.register('warehouse-stats', WarehouseStatsApi, basename='warehouse-stats')
+router.register('actions-for-coordinator', ActionCoordinatorApi, basename='coordinator-action')
+router.register('actions-for-director', ActionDirectorApi, basename='director-action')
 router.register('workers-stats', WorkersStatsApi, basename='stats')
-router.register('warehouse-add-action-window',
-                AddActionWindonApi, basename='add-action-window')
+router.register('warehouse-add-action-window', AddActionWindonApi, basename='add-action-window')
 
 
 urlpatterns = [

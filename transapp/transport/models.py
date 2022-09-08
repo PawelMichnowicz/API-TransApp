@@ -1,11 +1,11 @@
-'''
+"""
 Models for transport APIs
-'''
+"""
 from django.db import models
 import uuid
 
 class Vehicle(models.Model):
-    ''' Vehicle model '''
+    """ Vehicle model """
     registration = models.CharField(max_length=30, unique=True)
     capacity = models.IntegerField()
     is_refrigerate = models.BooleanField(default=False)
@@ -19,7 +19,7 @@ class Vehicle(models.Model):
 
 
 class Route(models.Model):
-    ''' Route model '''
+    """ Route model """
     origin = models.CharField(max_length=100)
     destination = models.CharField(max_length=100)
     duration = models.DurationField(blank=True, null=True)
@@ -29,14 +29,14 @@ class Route(models.Model):
 
 
 class Transport(models.Model):
-    ''' Transport model '''
+    """ Transport model """
     route = models.ForeignKey(Route, on_delete=models.CASCADE)
     need_refrigerate = models.BooleanField(default=False)
     vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, blank=True, null=True, default=None)
 
 
 class Order(models.Model):
-    ''' Order model '''
+    """ Order model """
     order_id = models.UUIDField(default=uuid.uuid4, editable=False)
     buyer_email = models.EmailField()
     transport = models.ForeignKey(Transport, on_delete=models.CASCADE, related_name='orders')

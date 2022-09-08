@@ -129,7 +129,7 @@ class ActionInProgressSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         if attrs['action_window'].warehouse!=attrs['warehouse']:
-            raise serializers.ValidationError('action window cosnider another instance of warehouse')
+            raise serializers.ValidationError('This action window is included to another instance of warehouse')
         return super().validate(attrs)
 
 

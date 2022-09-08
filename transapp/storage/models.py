@@ -8,6 +8,8 @@ from django.db import models
 from django.db.models import F, Q
 from django.core.exceptions import ValidationError
 
+from rest_framework import serializers
+
 from transport.models import Transport
 
 from .constants import WEEKDAYS, StatusChoice
@@ -55,8 +57,6 @@ class OpenningTime(Time):
 class ActionWindow(Time):
     ''' Action window model which represent possible time for warehouse action '''
     monthday = models.DateField()
-    action_type = models.CharField(
-        max_length=255, choices=ActionChoice.choices)
     warehouse = models.ForeignKey(
         Warehouse, related_name='action_window', on_delete=models.CASCADE)
 
@@ -74,7 +74,7 @@ class Action(models.Model):
     duration = models.DurationField(null=True, blank=True)
     warehouse = models.ForeignKey(
         Warehouse, on_delete=models.CASCADE, related_name='actions', null=True, blank=True)
-    action_window = models.ForeignKey(
+    action_window = models.OneToOneField(
         ActionWindow, on_delete=models.CASCADE, related_name='action', null=True, blank=True)
     transport = models.ForeignKey(
         Transport, on_delete=models.CASCADE, related_name='action')
@@ -91,13 +91,9 @@ class Action(models.Model):
                       (Q(status=StatusChoice.IN_PROGRESS, duration__isnull=True)) |
                       (Q(status=StatusChoice.UNREADY, duration__isnull=True, warehouse__isnull=True)) ,
                 name='check_status_correct'
-                )
+                ),
             ]
 
-    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
-        if (self.status==StatusChoice.UNREADY or self.status==StatusChoice.IN_PROGRESS) and self.workers.exists():
-            raise ValidationError('This action cannot contain workers')
-        return super().save(force_insert, force_update, using, update_fields)
 
     def __str__(self):
         return f'{str(self.action_type).casefold()}_{str(self.status)}-{str(self.action_id)}'

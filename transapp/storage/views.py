@@ -160,8 +160,6 @@ class ActionCoordinatorApi(mixins.RetrieveModelMixin,
             status_queryset = queryset.filter(Q(status=unique['status']))
             serializer = self.get_serializer(status_queryset, many=True)
             data[unique['status']] = serializer.data
-        data = queryset.values('status').distinct().annotate(
-            warehouse=ArrayAgg('warehouse')).annotate(wrokers=ArrayAgg('workers'))
         return Response(data)
 
     def retrieve(self, request, *args, **kwargs):
